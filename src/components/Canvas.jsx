@@ -1,58 +1,126 @@
 // src/components/Canvas.jsx
-import React, { useRef } from 'react';
+import React from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  applyNodeChanges,
+  applyEdgeChanges,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+
 import { useNodesStore } from '../hooks/useNodesStore';
-import NodeItem from './NodeItem';
-import Connections from './Connections';
+import CustomNodeWrapper from './CustomNodeWrapper';
+
+const nodeTypes = {
+  custom: CustomNodeWrapper,
+};
+
+const edgeTypes = {};
 
 export default function Canvas() {
-  const containerRef = useRef(null);
-  const nodes = useNodesStore((state) => state.nodes);
-  const updateNode = useNodesStore((state) => state.updateNode);
+  const {
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    addNode,
+    removeIdeaFromBuffet,
+  } = useNodesStore();
 
-  const layoutTree = () => {
-    const levelMap = {};
-    const positions = {};
-
-    const placeNode = (id, depth = 0, index = 0) => {
-      if (!levelMap[depth]) levelMap[depth] = 0;
-      const x = 200 + depth * 280;
-      const y = 100 + levelMap[depth] * 150;
-      levelMap[depth]++;
-      positions[id] = { x, y };
-      const node = nodes.find((n) => n.id === id);
-      if (node && node.children) {
-        node.children.forEach((childId, i) => placeNode(childId, depth + 1, i));
-      }
-    };
-
-    placeNode('root');
-    Object.entries(positions).forEach(([id, pos]) => updateNode(id, { position: pos }));
+  const onNodesChange = (changes) => {
+    console.log('🧼 applying node changes:', changes);
+    setNodes((nds) => applyNodeChanges(changes, nds));
   };
 
+  const onEdgesChange = (changes) => {
+    console.log('🔗 applying edge changes:', changes);
+    setEdges((eds) => applyEdgeChanges(changes, eds));
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    const ideaData = event.dataTransfer.getData('application/json');
+    if (!ideaData) return;
+
+    const idea = JSON.parse(ideaData);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const dropPosition = {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    };
+
+    const distances = nodes.map((node) => {
+      const dx = node.position.x - dropPosition.x;
+      const dy = node.position.y - dropPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return { id: node.id, distance };
+    });
+
+    const nearest = distances.reduce((a, b) => (a.distance < b.distance ? a : b), distances[0]);
+    const parentId = nearest?.id || 'root';
+
+    // Check if parent is root and enforce limit of 5 children
+    if (parentId === 'root') {
+      const rootChildren = nodes.filter((node) => node.data.parentId === 'root');
+      if (rootChildren.length >= 5) {
+        console.warn('Limit of 5 first-level children reached.');
+        return;
+      }
+
+      // Assign background color based on the number of root children
+      const colors = ['#FFCDD2', '#C8E6C9', '#BBDEFB', '#FFF9C4', '#D1C4E9'];
+      const colorIndex = rootChildren.length % colors.length;
+      idea.backgroundColor = colors[colorIndex];
+    }
+
+    console.log('📦 Adding node with data:', {
+      title: idea.title,
+      summary: idea.summary,
+      backgroundColor: idea.backgroundColor,
+    });
+    
+
+    // Add node at drop position
+    addNode(parentId, idea.title, idea.summary, dropPosition, { backgroundColor: idea.backgroundColor });
+
+    // Remove idea from sidebar buffet
+    removeIdeaFromBuffet(idea.title);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const getNodeStyle = (node) => {
+    return node.data.backgroundColor
+      ? { backgroundColor: node.data.backgroundColor }
+      : {};
+  };
+  
+
+  console.log('🎨 Rendering nodes:', nodes);
+
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-screen overflow-auto bg-gradient-to-br from-gray-900 to-gray-800"
-    >
-      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <Connections nodes={nodes} />
-      </svg>
-
-      {nodes.map((node) => (
-        <NodeItem key={node.id} node={node} />
-      ))}
-
-      {/* Floating layout tools */}
-      <div className="absolute top-4 right-4 z-50 space-x-2">
-        <button
-          onClick={layoutTree}
-          className="bg-white text-gray-800 px-3 py-1 rounded shadow hover:bg-gray-100"
-        >
-          🧼 Tidy Layout
-        </button>
-      </div>
+    <div className="flex-1 h-full" onDrop={handleDrop} onDragOver={handleDragOver}>
+      <ReactFlow
+        nodes={nodes.map((node) => ({ ...node, style: getNodeStyle(node) }))}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        fitView
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        connectionLineType="bezier"
+      >
+        {nodes.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+            The canvas is empty. Start by entering a topic in the topbar.
+          </div>
+        )}
+        <Background />
+        <Controls />
+      </ReactFlow>
     </div>
   );
 }
-
-export { Canvas };

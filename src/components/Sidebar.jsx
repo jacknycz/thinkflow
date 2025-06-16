@@ -1,25 +1,32 @@
 // src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { generateIdea } from '../utils/openai'; // switched to OpenRouter with title/summary
+import { generateIdea } from '../utils/openai';
+import { Button, TextInput, Tooltip } from 'pres-start-core';
+import InfoIcon from '@mui/icons-material/Info';
 
 export default function Sidebar() {
   const [prompt, setPrompt] = useState('');
   const [chatLog, setChatLog] = useState([]);
-  const [ideaBuffet, setIdeaBuffet] = useState([]);
+
   const addNode = useNodesStore((state) => state.addNode);
+  const removeIdeaFromBuffet = useNodesStore((state) => state.removeIdeaFromBuffet);
+  const setIdeaBuffet = useNodesStore((state) => state.setIdeaBuffet);
+  const ideaBuffet = useNodesStore((state) => state.ideaBuffet);
   const nodes = useNodesStore((state) => state.nodes);
+  const rootNode = useNodesStore((state) => state.getRootNode());
 
   const generateIdeas = async () => {
-    if (!prompt.trim()) return;
+    const basePrompt = prompt.trim() || rootNode?.data?.label;
+    if (!basePrompt) return;
 
-    setChatLog((log) => [...log, { role: 'user', content: prompt }]);
+    setChatLog((log) => [...log, { role: 'user', content: basePrompt }]);
     setPrompt('');
 
     const generated = await Promise.all([
-      generateIdea(prompt),
-      generateIdea(prompt),
-      generateIdea(prompt),
+      generateIdea(basePrompt),
+      generateIdea(basePrompt),
+      generateIdea(basePrompt),
     ]);
 
     const uniqueIdeas = generated.filter(Boolean);
@@ -27,24 +34,30 @@ export default function Sidebar() {
   };
 
   const handleAddIdeaToNode = (nodeId, idea) => {
-    addNode(nodeId, `${idea.title}\n${idea.summary}`);
-    setIdeaBuffet((ideas) => ideas.filter((i) => i.title !== idea.title));
+    addNode(nodeId, `${idea.title}`, idea.summary);
+    removeIdeaFromBuffet(idea.title);
     setChatLog((log) => [...log, { role: 'system', content: `Idea added to ${idea.title}` }]);
   };
 
   const truncate = (text, maxLength = 20) => {
+    if (!text) return '';
     return text.length > maxLength ? text.slice(0, maxLength) + '…' : text;
   };
 
   return (
-    <aside className="w-80 bg-gray-100 h-screen p-4 overflow-y-auto">
-      <h2 className="text-lg font-bold mb-2">💬 Think Chat</h2>
+    <aside className="w-80 p-4 bg-gray-50 h-full overflow-y-auto shadow-inner shadow-md">
+      <h2 className="text-lg font-bold mb-2">
+        💬 Think Chat{' '}
+        <Tooltip content="Use this area to drill down into your topic" className="w-60" position="bottom">
+          <InfoIcon />
+        </Tooltip>
+      </h2>
 
       <div className="space-y-2 mb-4">
         {chatLog.map((msg, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded text-sm ${msg.role === 'user' ? 'bg-white text-gray-800' : 'bg-gray-200 text-gray-600'}`}
+            className={`p-2 rounded shadow-sm text-sm ${msg.role === 'user' ? 'bg-white text-gray-800' : 'bg-gray-200 text-gray-600'}`}
           >
             {msg.content}
           </div>
@@ -56,40 +69,48 @@ export default function Sidebar() {
           e.preventDefault();
           generateIdeas();
         }}
-        className="flex gap-2 mb-4"
+        className="flex gap-2 mb-6"
       >
-        <input
+        <TextInput
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="New idea topic..."
-          className="flex-1 border rounded p-2 text-sm"
+          placeholder={
+            rootNode?.data?.label ? `Ex: ${rootNode.data.label.slice(0, 30)}...` : 'New idea topic...'
+          }
         />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-        >
+        <Button variant="primary" size="default">
           Ask
-        </button>
+        </Button>
       </form>
 
       <h3 className="text-md font-semibold mb-2">🍽️ Idea Buffet</h3>
       {ideaBuffet.length === 0 && <p className="text-sm text-gray-500">No ideas yet — start chatting!</p>}
 
-      <ul className="space-y-2">
+      <ul className="space-y-4">
         {ideaBuffet.map((idea, idx) => (
-          <li key={`buffet-${idx}`} className="bg-white p-2 rounded shadow text-sm">
+          <li
+            key={`buffet-${idx}`}
+            className="transition-all duration-300 border border-gray-200 hover:bg-white p-2 rounded-lg hover:shadow text-sm"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/json', JSON.stringify(idea));
+            }}
+          >
             <p className="font-semibold text-gray-800 mb-1">{idea.title}</p>
-            <p className="text-gray-600 mb-2 text-xs whitespace-pre-line break-words">{idea.summary}</p>
+            <p className="text-gray-600 mb-2 text-xs whitespace-pre-line break-words">
+              {idea.summary}
+            </p>
             <div className="flex flex-wrap gap-1 justify-end">
               {nodes.map((node) => (
-                <button
+                <Button
                   key={`${node.id}-${idx}`}
                   onClick={() => handleAddIdeaToNode(node.id, idea)}
-                  className="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700"
-                  title={`Add to ${node.label}`}
+                  variant="secondary"
+                  size="small"
+                  title={`Add to ${node.data?.label ?? 'Unnamed node'}`}
                 >
-                  ➕ {truncate(node.label)}
-                </button>
+                  {truncate(node.data?.label)}
+                </Button>
               ))}
             </div>
           </li>

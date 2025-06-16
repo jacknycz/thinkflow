@@ -1,33 +1,39 @@
 // src/components/TopBar.jsx
 import React from 'react';
-import { Button } from 'pres-start-core';
+import { Button, TextInput } from 'pres-start-core';
 import { useNodesStore } from '../hooks/useNodesStore';
 
+
 export const TopBar = () => {
-  const label = useNodesStore((state) =>
-    state.nodes.find((n) => n.id === 'root')?.label
-  );
+  const rootNode = useNodesStore((state) => Array.isArray(state.nodes) ? state.nodes.find((n) => n.id === 'root') : null);
+
   const updateNode = useNodesStore((state) => state.updateNode);
   const generateAIChild = useNodesStore((state) => state.generateAIChild);
+  const addNode = useNodesStore((state) => state.addNode);
+
+  if (!updateNode || typeof updateNode !== 'function') {
+    console.error('updateNode is not defined or not a function. Check useNodesStore implementation.');
+    console.log('useNodesStore state:', useNodesStore((state) => state));
+  }
 
   const handleChange = (e) => {
-    updateNode('root', { label: e.target.value });
+    const newLabel = e.target.value;
+    if (newLabel.trim() !== '' && !rootNode) {
+      addNode('root', newLabel);
+    } else if (rootNode) {
+      updateNode('root', { label: newLabel });
+    }
   };
 
   return (
-    <header className="bg-gray-800 text-white p-4 flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold">🧠💦 ThinkFlow</h1>
-      <input
+    <header className="bg-white gray-800 shadow-sm p-4 flex justify-between items-center gap-4 top-0 left-0 right-0 z-10">
+      <h1 className="text-2xl font-bold">🧠💦 ThinkFlow</h1>
+      <TextInput
         type="text"
-        value={label || ''}
+        value={rootNode?.data?.label || ''}
         onChange={handleChange}
-        placeholder="Edit root topic..."
-        className="bg-gray-700 text-white border border-gray-600 rounded px-3 py-1 w-1/2"
+        placeholder="Get started with your idea..."
       />
-
-      <Button onClick={() => generateAIChild('root')}>
-        🤖 AI-Generate
-      </Button>
     </header>
   );
 };
