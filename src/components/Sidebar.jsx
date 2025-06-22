@@ -23,18 +23,30 @@ export default function Sidebar() {
     setChatLog((log) => [...log, { role: 'user', content: basePrompt }]);
     setPrompt('');
 
-    const generated = await Promise.all([
-      generateIdea(basePrompt),
-      generateIdea(basePrompt),
-      generateIdea(basePrompt),
-    ]);
+    // Dispatch AI thinking start event
+    window.dispatchEvent(new CustomEvent('ai-thinking-start'));
 
-    const uniqueIdeas = generated.filter(Boolean);
-    setIdeaBuffet(uniqueIdeas);
+    try {
+      const generated = await Promise.all([
+        generateIdea(basePrompt),
+        generateIdea(basePrompt),
+        generateIdea(basePrompt),
+      ]);
+
+      const uniqueIdeas = generated.filter(Boolean);
+      setIdeaBuffet(uniqueIdeas);
+    } catch (error) {
+      console.error('Error generating ideas:', error);
+    } finally {
+      // Dispatch AI thinking end event
+      window.dispatchEvent(new CustomEvent('ai-thinking-end'));
+    }
   };
 
   const handleAddIdeaToNode = (nodeId, idea) => {
-    addNode(nodeId, `${idea.title}`, idea.summary);
+    const parentNode = nodes.find(n => n.id === nodeId);
+    const backgroundColor = parentNode?.data?.backgroundColor || '';
+    addNode(nodeId, `${idea.title}`, idea.summary, null, { backgroundColor });
     removeIdeaFromBuffet(idea.title);
     setChatLog((log) => [...log, { role: 'system', content: `Idea added to ${idea.title}` }]);
   };
@@ -45,19 +57,20 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 p-4 bg-gray-50 h-full overflow-y-auto shadow-inner shadow-md">
-      <h2 className="text-lg font-bold mb-2">
-        💬 Think Chat{' '}
-        <Tooltip content="Use this area to drill down into your topic" className="w-60" position="bottom">
-          <InfoIcon />
-        </Tooltip>
+    <aside className="w-80 p-4 bg-gradient-to-b from-gray-900 to-gray-800 h-full overflow-y-auto shadow-inner shadow-gray-900 border-l border-gray-700">
+      <h2 className="text-lg font-bold mb-2 text-gray-100">
+        Make some ideas
       </h2>
 
       <div className="space-y-2 mb-4">
         {chatLog.map((msg, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded shadow-sm text-sm ${msg.role === 'user' ? 'bg-white text-gray-800' : 'bg-gray-200 text-gray-600'}`}
+            className={`p-2 rounded shadow-sm text-sm ${
+              msg.role === 'user' 
+                ? 'bg-gray-800 text-gray-200 border border-gray-600' 
+                : 'bg-gray-700 text-gray-300 border border-gray-600'
+            }`}
           >
             {msg.content}
           </div>
@@ -77,27 +90,32 @@ export default function Sidebar() {
           placeholder={
             rootNode?.data?.label ? `Ex: ${rootNode.data.label.slice(0, 30)}...` : 'New idea topic...'
           }
+          className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
         />
-        <Button variant="primary" size="default">
+        <Button 
+          variant="primary" 
+          size="default"
+          className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+        >
           Ask
         </Button>
       </form>
 
-      <h3 className="text-md font-semibold mb-2">🍽️ Idea Buffet</h3>
-      {ideaBuffet.length === 0 && <p className="text-sm text-gray-500">No ideas yet — start chatting!</p>}
+      <h3 className="text-md font-semibold mb-2 text-gray-100">🍽️ Idea Buffet</h3>
+      {ideaBuffet.length === 0 && <p className="text-sm text-gray-400">No ideas yet — start chatting!</p>}
 
       <ul className="space-y-4">
         {ideaBuffet.map((idea, idx) => (
           <li
             key={`buffet-${idx}`}
-            className="transition-all duration-300 border border-gray-200 hover:bg-white p-2 rounded-lg hover:shadow text-sm"
+            className="transition-all cursor-grab duration-300 border border-gray-600 hover:bg-gray-800 p-3 rounded-lg hover:shadow-lg hover:shadow-gray-900 text-sm bg-gray-800/50 backdrop-blur-sm"
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/json', JSON.stringify(idea));
             }}
           >
-            <p className="font-semibold text-gray-800 mb-1">{idea.title}</p>
-            <p className="text-gray-600 mb-2 text-xs whitespace-pre-line break-words">
+            <p className="font-semibold text-gray-100 mb-1">{idea.title}</p>
+            <p className="text-gray-300 mb-2 text-xs whitespace-pre-line break-words">
               {idea.summary}
             </p>
             <div className="flex flex-wrap gap-1 justify-end">
@@ -108,6 +126,7 @@ export default function Sidebar() {
                   variant="secondary"
                   size="small"
                   title={`Add to ${node.data?.label ?? 'Unnamed node'}`}
+                  className="bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600 hover:border-gray-500 text-xs"
                 >
                   {truncate(node.data?.label)}
                 </Button>
