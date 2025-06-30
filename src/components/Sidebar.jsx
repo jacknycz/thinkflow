@@ -1,7 +1,7 @@
 // src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { generateIdea } from '../utils/openai';
+import { generateIdea, generateIdeaBuffet } from '../utils/openai';
 import { Button, TextInput, Tooltip } from 'pres-start-core';
 import InfoIcon from '@mui/icons-material/Info';
 
@@ -19,34 +19,28 @@ export default function Sidebar() {
   const generateIdeas = async () => {
     const basePrompt = prompt.trim() || rootNode?.data?.label;
     if (!basePrompt) return;
-
     setChatLog((log) => [...log, { role: 'user', content: basePrompt }]);
     setPrompt('');
-
-    // Dispatch AI thinking start event
     window.dispatchEvent(new CustomEvent('ai-thinking-start'));
-
     try {
-      const generated = await Promise.all([
-        generateIdea(basePrompt),
-        generateIdea(basePrompt),
-        generateIdea(basePrompt),
-      ]);
-
-      const uniqueIdeas = generated.filter(Boolean);
-      setIdeaBuffet(uniqueIdeas);
+      const ideas = await generateIdeaBuffet({ userPrompt: basePrompt, rootNode: rootNode?.data?.label || '', numberOfIdeas: 5 });
+      // Map each idea string to an object with title and summary
+      const ideaObjects = (ideas || []).map((idea) => ({ title: idea, summary: '' }));
+      setIdeaBuffet(ideaObjects);
     } catch (error) {
       console.error('Error generating ideas:', error);
     } finally {
-      // Dispatch AI thinking end event
       window.dispatchEvent(new CustomEvent('ai-thinking-end'));
     }
   };
 
   const handleAddIdeaToNode = (nodeId, idea) => {
     const parentNode = nodes.find(n => n.id === nodeId);
-    const backgroundColor = parentNode?.data?.backgroundColor || '';
-    addNode(nodeId, `${idea.title}`, idea.summary, null, { backgroundColor });
+    // Only pass backgroundColor if the parent is not root
+    const extraData = parentNode && parentNode.id !== 'root'
+      ? { backgroundColor: parentNode.data?.backgroundColor }
+      : {};
+    addNode(nodeId, `${idea.title}`, idea.summary, null, extraData);
     removeIdeaFromBuffet(idea.title);
     setChatLog((log) => [...log, { role: 'system', content: `Idea added to ${idea.title}` }]);
   };

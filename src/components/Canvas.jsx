@@ -416,7 +416,7 @@ export default function Canvas() {
         ref={reactFlowRef}
         minZoom={0.1}
         maxZoom={4}
-        defaultZoom={1}
+        // defaultZoom={1}
         zoomOnScroll={true}
         zoomOnPinch={true}
         zoomOnDoubleClick={true}

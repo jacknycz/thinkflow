@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconButton, Modal, TextArea, TextInput, Button } from 'pres-start-core';
 import { Handle, Position, useReactFlow } from 'reactflow';
-import { generateIdea } from '../utils/openai';
+import { generateIdea, generateSingleIdea } from '../utils/openai';
 import { useNodesStore } from '../hooks/useNodesStore';
 
 // icons
@@ -109,45 +109,43 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
   };
 
   const handleGenerateAI = async () => {
-    // Dispatch AI thinking start event
     window.dispatchEvent(new CustomEvent('ai-thinking-start'));
-    
     try {
-      const idea = await generateIdea(data.label);
-      if (idea?.title && idea?.summary) {
-        const fullLabel = `${idea.title}\n${idea.summary}`;
-        
-        // Get current node position
-        const currentNode = reactFlowInstance.getNode(id);
-        if (!currentNode) {
-          console.error('Could not find current node:', id);
-          return;
+      // Find root node label
+      const rootNode = nodes.find(n => n.id === 'root')?.data?.label || '';
+      // Find parent nodes (excluding root and current)
+      const parentNodes = [];
+      let parentId = data.parentId;
+      while (parentId && parentId !== 'root') {
+        const parent = nodes.find(n => n.id === parentId);
+        if (parent) {
+          parentNodes.unshift(parent.data?.label || '');
+          parentId = parent.data?.parentId;
+        } else {
+          break;
         }
-        
-        console.log('Current node position:', currentNode.position);
-        
-        // Calculate handle information for the new node
-        const currentTime = Date.now();
-        const randomOffset = Math.sin(currentTime) * 50; // Add some randomness to position
-        
-        // Calculate position relative to current node
+      }
+      // Current node label
+      const currentNode = data.label || '';
+      // Call new AI function
+      const ideaText = await generateSingleIdea({ rootNode, parentNodes, currentNode });
+      if (ideaText && typeof ideaText === 'string') {
+        // Use the idea as the label, summary is empty
+        const currentNodeObj = reactFlowInstance.getNode(id);
         const offset = 160;
+        const currentTime = Date.now();
+        const randomOffset = Math.sin(currentTime) * 50;
         const newPosition = {
-          x: currentNode.position.x + offset + randomOffset,
-          y: currentNode.position.y + offset + randomOffset,
+          x: currentNodeObj.position.x + offset + randomOffset,
+          y: currentNodeObj.position.y + offset + randomOffset,
         };
-        
-        console.log('New node position:', newPosition);
-        
-        // Calculate which handle to use based on position
-        const dx = newPosition.x - currentNode.position.x;
-        const dy = newPosition.y - currentNode.position.y;
+        // Handle positions for handles
+        const dx = newPosition.x - currentNodeObj.position.x;
+        const dy = newPosition.y - currentNodeObj.position.y;
         const absDx = Math.abs(dx);
         const absDy = Math.abs(dy);
-        
         let sourceHandle = 'right-source';
         let targetHandle = 'left-target';
-        
         if (absDx > absDy) {
           sourceHandle = dx > 0 ? 'right-source' : 'left-source';
           targetHandle = dx > 0 ? 'left-target' : 'right-target';
@@ -155,21 +153,17 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
           sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
           targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
         }
-        
-        console.log('Calculated handles:', { sourceHandle, targetHandle });
-        
-        addNode(id, idea.title, idea.summary, newPosition, {
+        addNode(id, ideaText, '', newPosition, {
           sourceHandle,
           targetHandle,
           parentId: id
         });
       } else {
-        console.error('Failed to generate AI idea:', idea);
+        console.error('Failed to generate AI idea:', ideaText);
       }
     } catch (error) {
       console.error('Error generating AI idea:', error);
     } finally {
-      // Dispatch AI thinking end event
       window.dispatchEvent(new CustomEvent('ai-thinking-end'));
     }
   };
