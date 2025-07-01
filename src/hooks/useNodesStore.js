@@ -285,10 +285,25 @@ export const useNodesStore = create((set, get) => ({
   },
   unpinNode: () => set({ pinnedNodeId: null, pinnedNodeIds: [] }),
 
+  // Active root management (for AI brainstorming)
+  activeRootId: 'root', // Default to the structural root
+  setActiveRoot: (nodeId) => set({ activeRootId: nodeId }),
+
   // Make node root
   makeNodeRoot: (nodeId) => {
     const state = get();
-    state.updateNode(nodeId, { parentId: null, nodeColor: '#ffffff' });
-    // Optionally, update old root's color if needed
+    
+    // If clicking on the current active root, revert to original root
+    if (nodeId === state.activeRootId) {
+      set({ activeRootId: 'root' });
+      state.unpinNode(); // Unpin to show full mind map
+      return;
+    }
+    
+    // Set the new active root for AI purposes
+    set({ activeRootId: nodeId });
+    
+    // Automatically pin the new active root
+    state.pinNode(nodeId);
   },
 }));

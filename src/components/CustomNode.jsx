@@ -35,6 +35,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
   const clearDraggedNode = useNodesStore((state) => state.clearDraggedNode);
   const pinnedNodeId = useNodesStore((state) => state.pinnedNodeId);
   const pinnedNodeIds = useNodesStore((state) => state.pinnedNodeIds);
+  const activeRootId = useNodesStore((state) => state.activeRootId);
 
   useEffect(() => {
     setNoteText(data.note || '');
@@ -108,7 +109,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
         targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
       }
       
-      addNode(id, label, summary, newPosition, {
+      addNode(id, fullLabel, '', newPosition, {
         sourceHandle,
         targetHandle,
         parentId: id
@@ -122,7 +123,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
     setGenerateModalOpen(false);
     window.dispatchEvent(new CustomEvent('ai-thinking-start'));
     try {
-      const rootNode = nodes.find(n => n.id === 'root')?.data?.label || '';
+      const rootNode = nodes.find(n => n.id === activeRootId)?.data?.label || '';
       const parentNodes = [];
       let parentId = data.parentId;
       while (parentId && parentId !== 'root') {
@@ -214,7 +215,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
     <div
       className={`group relative p-6 border rounded-3xl shadow max-w-96 transition-all duration-300 ${
         shouldBlur ? 'node-blur' : isPinned ? 'node-focus' : ''
-      }`}
+      } ${id === activeRootId ? 'node-root' : ''}`}
       style={{ 
         background: `radial-gradient(circle, transparent 30%, ${data.nodeColor || '#e5e7eb'}40 100%)`,
         border: `2px solid ${data.nodeColor || '#e5e7eb'}`,
