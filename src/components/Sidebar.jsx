@@ -36,9 +36,9 @@ export default function Sidebar() {
 
   const handleAddIdeaToNode = (nodeId, idea) => {
     const parentNode = nodes.find(n => n.id === nodeId);
-    // Only pass backgroundColor if the parent is not root
+    // Only pass nodeColor if the parent is not root
     const extraData = parentNode && parentNode.id !== 'root'
-      ? { backgroundColor: parentNode.data?.backgroundColor }
+      ? { nodeColor: parentNode.data?.nodeColor }
       : {};
     addNode(nodeId, `${idea.title}`, idea.summary, null, extraData);
     removeIdeaFromBuffet(idea.title);

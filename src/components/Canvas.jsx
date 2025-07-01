@@ -5,7 +5,7 @@ import ReactFlow, {
   Controls,
   applyNodeChanges,
   applyEdgeChanges,
-  getBezierPath,
+  // getBezierPath,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -60,6 +60,11 @@ export default function Canvas() {
     addNode,
     removeIdeaFromBuffet,
   } = useNodesStore();
+
+  // Get pin state for edge blurring
+  const pinnedNodeId = useNodesStore((state) => state.pinnedNodeId);
+  const pinnedNodeIds = useNodesStore((state) => state.pinnedNodeIds);
+  const draggedNodeId = useNodesStore((state) => state.draggedNodeId);
 
   // Get root node
   const rootNode = nodes.find(n => n.id === 'root');
@@ -123,7 +128,7 @@ export default function Canvas() {
   };
 
   const onNodesChange = (changes) => {
-    console.log('🧼 applying node changes:', changes);
+    // console.log('🧼 applying node changes:', changes);
     setNodes((nds) => applyNodeChanges(changes, nds));
 
     // Check if any nodes are being dragged and update handles in real-time
@@ -133,6 +138,18 @@ export default function Canvas() {
         checkAndUpdateHandles(change.id);
       }
     });
+  };
+
+  const onNodeDragStart = (event, node) => {
+    console.log('🚀 Node drag started:', node.id);
+    const { setDraggedNode } = useNodesStore.getState();
+    setDraggedNode(node.id);
+  };
+
+  const onNodeDragStop = (event, node) => {
+    console.log('🛑 Node drag stopped:', node.id);
+    const { clearDraggedNode } = useNodesStore.getState();
+    clearDraggedNode();
   };
 
   const checkAndUpdateHandles = (nodeId) => {
@@ -165,11 +182,11 @@ export default function Canvas() {
     const currentTargetHandle = node.data.targetHandle || 'left-target';
 
     if (optimalSourceHandle !== currentSourceHandle || optimalTargetHandle !== currentTargetHandle) {
-      console.log('Updating handles during drag:', {
-        nodeId,
-        from: { source: currentSourceHandle, target: currentTargetHandle },
-        to: { source: optimalSourceHandle, target: optimalTargetHandle }
-      });
+      // console.log('Updating handles during drag:', {
+      //   nodeId,
+      //   from: { source: currentSourceHandle, target: currentTargetHandle },
+      //   to: { source: optimalSourceHandle, target: optimalTargetHandle }
+      // });
 
       // Update the node with new handles
       const updateNode = useNodesStore.getState().updateNode;
@@ -252,16 +269,16 @@ export default function Canvas() {
       }
     }
 
-    // Get parent node to inherit background color
+    // Get parent node to inherit node color
     const parentNode = nodes.find(n => n.id === parentId);
-    let backgroundColor = '';
+    let nodeColor = '';
 
     if (parentId === 'root') {
       const rootChildren = nodes.filter((node) => node.data?.parentId === 'root');
       const colors = ['#FFCDD2', '#C8E6C9', '#BBDEFB', '#FFF9C4', '#D1C4E9'];
-      backgroundColor = colors[rootChildren.length % colors.length];
+      nodeColor = colors[rootChildren.length % colors.length];
     } else if (parentNode) {
-      backgroundColor = parentNode.data?.backgroundColor || '';
+      nodeColor = parentNode.data?.nodeColor || '';
     }
 
     // Calculate the best handle position for root node connections
@@ -314,7 +331,7 @@ export default function Canvas() {
     console.log('📦 Adding node with data:', {
       title: idea.title,
       summary: idea.summary,
-      backgroundColor,
+      nodeColor,
       parentId,
       sourceHandle,
       targetHandle,
@@ -323,7 +340,7 @@ export default function Canvas() {
 
     // Add node at drop position
     addNode(parentId, idea.title, idea.summary, dropPosition, {
-      backgroundColor,
+      nodeColor,
       parentId,
       sourceHandle,
       targetHandle
@@ -340,33 +357,44 @@ export default function Canvas() {
 
   const getNodeStyle = (node) => {
     return node.data.backgroundColor
-      ? { backgroundColor: node.data.backgroundColor }
-      : {};
+      ? { backgroundColor: node.data.backgroundColor, borderRadius: '24px' }
+      : { borderRadius: '24px' };
   };
 
   // Apply neon styling to edges
   const styledEdges = edges.map(edge => {
     const targetNode = nodes.find(n => n.id === edge.target);
-    const edgeColor = targetNode?.data?.backgroundColor || '#ffffff';
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const edgeColor = targetNode?.data?.nodeColor || '#ffffff';
+
+    // Determine if this edge should be blurred
+    const shouldBlurEdge = (
+      (pinnedNodeId && !pinnedNodeIds.includes(edge.source) && !pinnedNodeIds.includes(edge.target)) ||
+      (draggedNodeId !== null && draggedNodeId !== edge.source && draggedNodeId !== edge.target)
+    );
 
     return {
       ...edge,
-      type: edge.type || 'bezier', // Preserve the edge type
+      // type: edge.type || 'bezier', // Preserve the edge type
       style: {
         stroke: edgeColor,
         strokeWidth: 3,
-        filter: `drop-shadow(0 0 8px ${edgeColor}) drop-shadow(0 0 16px ${edgeColor})`,
+        filter: shouldBlurEdge 
+          ? `blur(2px) opacity(0.3) drop-shadow(0 0 4px ${edgeColor})`
+          : `drop-shadow(0 0 8px ${edgeColor}) drop-shadow(0 0 16px ${edgeColor})`,
+        transition: 'filter 0.3s ease-in-out',
       },
       markerEnd: {
         type: 'arrow',
         width: 20,
         height: 20,
         color: edgeColor,
+        filter: shouldBlurEdge ? 'blur(2px) opacity(0.3)' : 'none',
       },
     };
   });
 
-  console.log('🎨 Rendering nodes:', nodes);
+  // console.log('🎨 Rendering nodes:', nodes);
 
   return (
     <div
@@ -409,9 +437,11 @@ export default function Canvas() {
         edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
         fitView
         nodeTypes={nodeTypes}
-        connectionLineType="bezier"
+        // connectionLineType="bezier"
         className="relative z-20"
         ref={reactFlowRef}
         minZoom={0.1}

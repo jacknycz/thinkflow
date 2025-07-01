@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { IconButton, Modal, TextArea, TextInput, Button } from 'pres-start-core';
 import { Handle, Position, useReactFlow } from 'reactflow';
-import { generateIdea, generateSingleIdea } from '../utils/openai';
+import { generateSingleIdea } from '../utils/openai';
 import { useNodesStore } from '../hooks/useNodesStore';
+import DeleteIcon from '@mui/icons-material/Delete';
+import NodeToolbar from './NodeToolbar';
 
 // icons
 import AddIcon from '@mui/icons-material/Add';
 import InfoIcon from '@mui/icons-material/Info';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function CustomNode({ id, data, addNode, updateNode = () => {}, nodes }) {
   const [hovered, setHovered] = useState(false);
   const [isNoteModalOpen, setNoteModalOpen] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [isGenerateModalOpen, setGenerateModalOpen] = useState(false);
+  const [selectedPromptType, setSelectedPromptType] = useState('idea');
+
   const reactFlowInstance = useReactFlow();
 
   const [noteText, setNoteText] = useState('');
@@ -23,6 +27,14 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
   const [newSummary, setNewSummary] = useState('');
 
   const deleteNode = useNodesStore((state) => state.deleteNode);
+  const hoveredNodeId = useNodesStore((state) => state.hoveredNodeId);
+  const setHoveredNode = useNodesStore((state) => state.setHoveredNode);
+  const clearHoveredNode = useNodesStore((state) => state.clearHoveredNode);
+  const draggedNodeId = useNodesStore((state) => state.draggedNodeId);
+  const setDraggedNode = useNodesStore((state) => state.setDraggedNode);
+  const clearDraggedNode = useNodesStore((state) => state.clearDraggedNode);
+  const pinnedNodeId = useNodesStore((state) => state.pinnedNodeId);
+  const pinnedNodeIds = useNodesStore((state) => state.pinnedNodeIds);
 
   useEffect(() => {
     setNoteText(data.note || '');
@@ -71,18 +83,15 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
     if (label) {
       const fullLabel = label + (summary ? `\n${summary}` : '');
       
-      // Calculate handle information for the new node
       const currentTime = Date.now();
-      const randomOffset = Math.sin(currentTime) * 50; // Add some randomness to position
+      const randomOffset = Math.sin(currentTime) * 50;
       
-      // Calculate position relative to current node
       const offset = 160;
       const newPosition = {
         x: reactFlowInstance.getNode(id).position.x + offset + randomOffset,
         y: reactFlowInstance.getNode(id).position.y + offset + randomOffset,
       };
       
-      // Calculate which handle to use based on position
       const dx = newPosition.x - reactFlowInstance.getNode(id).position.x;
       const dy = newPosition.y - reactFlowInstance.getNode(id).position.y;
       const absDx = Math.abs(dx);
@@ -108,12 +117,12 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
     setAddModalOpen(false);
   };
 
-  const handleGenerateAI = async () => {
+  // NEW: handle Generate AI modal confirmed generate
+  const handleGenerateAIConfirm = async () => {
+    setGenerateModalOpen(false);
     window.dispatchEvent(new CustomEvent('ai-thinking-start'));
     try {
-      // Find root node label
       const rootNode = nodes.find(n => n.id === 'root')?.data?.label || '';
-      // Find parent nodes (excluding root and current)
       const parentNodes = [];
       let parentId = data.parentId;
       while (parentId && parentId !== 'root') {
@@ -125,12 +134,16 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
           break;
         }
       }
-      // Current node label
       const currentNode = data.label || '';
-      // Call new AI function
-      const ideaText = await generateSingleIdea({ rootNode, parentNodes, currentNode });
+
+      const ideaText = await generateSingleIdea({
+        rootNode,
+        parentNodes,
+        currentNode,
+        promptType: selectedPromptType,
+      });
+
       if (ideaText && typeof ideaText === 'string') {
-        // Use the idea as the label, summary is empty
         const currentNodeObj = reactFlowInstance.getNode(id);
         const offset = 160;
         const currentTime = Date.now();
@@ -139,7 +152,6 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
           x: currentNodeObj.position.x + offset + randomOffset,
           y: currentNodeObj.position.y + offset + randomOffset,
         };
-        // Handle positions for handles
         const dx = newPosition.x - currentNodeObj.position.x;
         const dy = newPosition.y - currentNodeObj.position.y;
         const absDx = Math.abs(dx);
@@ -156,7 +168,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
         addNode(id, ideaText, '', newPosition, {
           sourceHandle,
           targetHandle,
-          parentId: id
+          parentId: id,
         });
       } else {
         console.error('Failed to generate AI idea:', ideaText);
@@ -185,21 +197,41 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
     deleteNode(id);
   };
 
-  // break down the label from chat repsonse into title and summary
-  const title = data.label?.split('\n')[0] || '';
-  const summary = data.summary || data.label?.split('\n')[1] || '';
+  // Split label into title (first 2 lines) and summary (rest)
+  const labelLines = data.label?.split('\n') || [];
+  const title = labelLines.slice(0, 2).join('\n');
+  const summary = labelLines.slice(2).join('\n');
 
-  // console.log(`🎯 Node buster ${id} data:`, data);
+  const isHovered = hoveredNodeId === id;
+  const isDragged = draggedNodeId === id;
+  const shouldBlur = (
+    (pinnedNodeId && !pinnedNodeIds.includes(id)) ||
+    (draggedNodeId !== null && draggedNodeId !== id)
+  );
+  const isPinned = pinnedNodeIds.includes(id);
 
-  // duh duh duh the node
   return (
     <div
-      className="relative p-3 border rounded shadow w-64 transition-all duration-200"
-      style={{ backgroundColor: data.backgroundColor || '#ffffff' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={`group relative p-6 border rounded-3xl shadow max-w-96 transition-all duration-300 ${
+        shouldBlur ? 'node-blur' : isPinned ? 'node-focus' : ''
+      }`}
+      style={{ 
+        background: `radial-gradient(circle, transparent 30%, ${data.nodeColor || '#e5e7eb'}40 100%)`,
+        border: `2px solid ${data.nodeColor || '#e5e7eb'}`,
+        // borderRadius: '24px',
+      }}
+      onMouseEnter={() => {
+        setHovered(true);
+        setHoveredNode(id);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        clearHoveredNode();
+      }}
     >
-      {/* Add handles on all sides for all nodes - each position has both source and target */}
+      {/* Toolbar for child nodes */}
+      <NodeToolbar nodeId={id} isPinned={isPinned} />
+      {/* Handles */}
       <Handle type="target" position={Position.Top} id="top-target" />
       <Handle type="source" position={Position.Top} id="top-source" />
       <Handle type="target" position={Position.Right} id="right-target" />
@@ -209,16 +241,24 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
       <Handle type="target" position={Position.Left} id="left-target" />
       <Handle type="source" position={Position.Left} id="left-source" />
 
-      <h3 className="font-bold text-gray-800 whitespace-pre-wrap">{title}</h3>
-      <p className="text-gray-600 whitespace-pre-wrap">{summary}</p>
+      <h3 className="font-normal leading-tight line-clamp-2 whitespace-pre-wrap" style={{ color: data.nodeColor || '#374151' }}>{title}</h3>
+      {summary && (
+        <p className={`whitespace-pre-wrap font-light text-sm mt-1 transition-opacity duration-200 ${
+          hovered ? 'opacity-100' : 'opacity-0'
+        }`} style={{ color: data.nodeColor || '#6b7280' }}>
+          {summary}
+        </p>
+      )}
+      {/* {!summary && id !== 'root' && (
+        <p className="text-red-500 text-xs">NO SUMMARY for child node</p>
+      )} */}
 
-      {/* UPDATE THIS: hover buttons, update to menu */}
       {hovered && (
-        <div className="absolute top-2 right-2 flex gap-2">
+        <div className="absolute top-0 right-0 px-4 space-y-1 transform translate-x-full flex flex-col gap-2">
           <IconButton
             size="sm"
-            variant="solid"
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            variant="primary"
+            shape="circle"
             title="Add idea"
             onClick={handleAdd}
           >
@@ -227,18 +267,18 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
 
           <IconButton
             size="sm"
-            variant="solid"
-            className="bg-green-600 text-white hover:bg-green-700"
+            variant="primary"
+            shape="circle"
             title="Generate AI Idea"
-            onClick={handleGenerateAI}
+            onClick={() => setGenerateModalOpen(true)}
           >
             <AutoAwesomeIcon fontSize="small" />
           </IconButton>
 
           <IconButton
             size="sm"
-            variant="outline"
-            className="text-gray-700 border-gray-300 hover:bg-gray-100"
+            variant="primary"
+            shape="circle"
             title="View note"
             onClick={() => setNoteModalOpen(true)}
           >
@@ -248,8 +288,8 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
           {id !== 'root' && (
             <IconButton
               size="sm"
-              variant="solid"
-              className="bg-red-600 text-white hover:bg-red-700"
+              variant="primary"
+              shape="circle"
               title="Delete Node"
               onClick={handleDeleteNode}
             >
@@ -259,8 +299,8 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
 
           <IconButton
             size="sm"
-            variant="solid"
-            className="bg-yellow-600 text-white hover:bg-yellow-700"
+            variant="primary"
+            shape="circle"
             title="Edit Note"
             onClick={() => setNoteModalOpen(true)}
           >
@@ -269,7 +309,6 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
         </div>
       )}
 
-      {/* show the note guy */}
       {data.note && (
         <div className="mt-4 p-2 bg-yellow-50 rounded text-sm text-gray-600 whitespace-pre-wrap">
           {data.note}
@@ -313,14 +352,6 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
             placeholder="Enter your note..."
             rows={4}
           />
-          {/* UPDATE THIS: summary test, do we want to add it back in?
-          <TextArea
-            label="Summary"
-            value={summaryText}
-            onChange={(e) => setSummaryText(e.target.value)}
-            placeholder="Enter your summary..."
-            rows={2}
-          /> */}
         </div>
         <div className="flex justify-end mt-4">
           <Button variant="secondary" onClick={() => setNoteModalOpen(false)} className="mr-2">
@@ -328,6 +359,36 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
           </Button>
           <Button variant="primary" onClick={handleSaveNote}>
             Save Note
+          </Button>
+        </div>
+      </Modal>
+
+      {/* NEW: Generate AI Type Modal */}
+      <Modal isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
+        <div className="space-y-4">
+          <p className="font-semibold">As...</p>
+          <div className="flex flex-col space-y-2">
+            {['question', 'idea', 'task', 'note'].map((type) => (
+              <label key={type} className="inline-flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="promptType"
+                  value={type}
+                  checked={selectedPromptType === type}
+                  onChange={() => setSelectedPromptType(type)}
+                  className="form-radio text-blue-600"
+                />
+                <span className="capitalize">{type}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleGenerateAIConfirm}>
+            Generate
           </Button>
         </div>
       </Modal>

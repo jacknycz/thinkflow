@@ -6,6 +6,7 @@ export const useNodesStore = create((set, get) => ({
   // set empty canvas
   nodes: [], 
   edges: [],
+  hoveredNodeId: null,
 
   // set the nodes
   setNodes: (updater) =>
@@ -59,20 +60,23 @@ export const useNodesStore = create((set, get) => ({
     const parent = get().nodes.find((n) => n.id === parentId);
     const offset = 160;
 
-    let backgroundColor = extraData.backgroundColor || '';
+    let nodeColor = extraData.nodeColor || '';
 
-    if (!backgroundColor && parentId === 'root' && !isRootNode) {
+    // Set root node to white
+    if (isRootNode) {
+      nodeColor = '#ffffff';
+    } else if (!nodeColor && parentId === 'root' && !isRootNode) {
       const rootChildren = get().nodes.filter((node) => node.data.parentId === 'root');
       const colors = ['#FFCDD2', '#C8E6C9', '#BBDEFB', '#FFF9C4', '#D1C4E9'];
       const colorIndex = rootChildren.length % colors.length;
-      backgroundColor = colors[colorIndex];
-    } else if (!backgroundColor && parent) {
-      backgroundColor = parent.data.backgroundColor || '';
+      nodeColor = colors[colorIndex];
+    } else if (!nodeColor && parent) {
+      nodeColor = parent.data.nodeColor || '';
     }
 
-    // If backgroundColor is still not defined, fallback to what's passed in
-    if (!backgroundColor && extraData.backgroundColor) {
-      backgroundColor = extraData.backgroundColor;
+    // If nodeColor is still not defined, fallback to what's passed in
+    if (!nodeColor && extraData.nodeColor) {
+      nodeColor = extraData.nodeColor;
     }
 
     const newNode = {
@@ -87,7 +91,7 @@ export const useNodesStore = create((set, get) => ({
         summary,
         note: '',
         parentId,
-        backgroundColor,
+        nodeColor,
         ...extraData,
       },
     };
@@ -97,7 +101,7 @@ export const useNodesStore = create((set, get) => ({
         id: `${parentId}->${id}`,
         source: parentId,
         target: id,
-        type: 'bezier',
+        // type: 'bezier',
         sourceHandle: extraData.sourceHandle || 'right-source',
         targetHandle: extraData.targetHandle || 'left-target'
       }
@@ -244,7 +248,7 @@ export const useNodesStore = create((set, get) => ({
           id: `${parentNode?.id || 'root'}->${child.id}`,
           source: parentNode?.id || 'root',
           target: child.id,
-          type: 'bezier',
+          // type: 'bezier',
           sourceHandle,
           targetHandle
         };
@@ -255,4 +259,36 @@ export const useNodesStore = create((set, get) => ({
         edges: [...filteredEdges, ...newEdges]
       };
     }),
+
+  // Hover state management
+  setHoveredNode: (nodeId) => set({ hoveredNodeId: nodeId }),
+  clearHoveredNode: () => set({ hoveredNodeId: null }),
+  
+  // Drag state management
+  draggedNodeId: null,
+  setDraggedNode: (nodeId) => set({ draggedNodeId: nodeId }),
+  clearDraggedNode: () => set({ draggedNodeId: null }),
+
+  // Pin state management
+  pinnedNodeId: null,
+  pinnedNodeIds: [],
+  pinNode: (nodeId) => {
+    const state = get();
+    function collectDescendants(id) {
+      const children = state.nodes.filter(n => n.data.parentId === id);
+      return [id, ...children.flatMap(child => collectDescendants(child.id))];
+    }
+    set({
+      pinnedNodeId: nodeId,
+      pinnedNodeIds: collectDescendants(nodeId),
+    });
+  },
+  unpinNode: () => set({ pinnedNodeId: null, pinnedNodeIds: [] }),
+
+  // Make node root
+  makeNodeRoot: (nodeId) => {
+    const state = get();
+    state.updateNode(nodeId, { parentId: null, nodeColor: '#ffffff' });
+    // Optionally, update old root's color if needed
+  },
 }));
