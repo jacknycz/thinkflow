@@ -126,11 +126,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
         </p>
       )}
 
-      {data.note && (
-        <div className={`mt-4 p-2 rounded text-sm whitespace-pre-wrap ${noteBackgroundClass} ${noteTextClass}`}>
-          {data.note}
-        </div>
-      )}
+
     </div>
   );
 }

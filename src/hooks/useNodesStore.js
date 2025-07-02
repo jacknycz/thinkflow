@@ -131,13 +131,17 @@ export const useNodesStore = create((set, get) => ({
         nodes: [...state.nodes, newNode],
         edges: newEdge ? [...state.edges, newEdge] : state.edges,
       };
-      
+      // Auto-pin if parent is pinned
+      if (!isRootNode && state.pinnedNodeIds.includes(parentId)) {
+        console.log('📌 Auto-pinning new node because parent is pinned:', id);
+        newState.pinnedNodeIds = [...state.pinnedNodeIds, id];
+      }
       console.log('🔧 addNode new state:', {
         nodesCount: newState.nodes.length,
         edgesCount: newState.edges.length,
-        latestEdge: newEdge
+        latestEdge: newEdge,
+        pinnedNodeIds: newState.pinnedNodeIds
       });
-      
       return newState;
     });
   },
@@ -278,10 +282,12 @@ export const useNodesStore = create((set, get) => ({
       const children = state.nodes.filter(n => n.data.parentId === id);
       return [id, ...children.flatMap(child => collectDescendants(child.id))];
     }
+    const pinnedFamily = collectDescendants(nodeId);
     set({
       pinnedNodeId: nodeId,
-      pinnedNodeIds: collectDescendants(nodeId),
+      pinnedNodeIds: pinnedFamily,
     });
+    console.log('📌 Pinned node family:', { root: nodeId, family: pinnedFamily });
   },
   unpinNode: () => set({ pinnedNodeId: null, pinnedNodeIds: [] }),
 

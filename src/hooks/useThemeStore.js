@@ -11,8 +11,8 @@ const themes = {
     nodeBackgroundGradient: 'bg-gradient-to-br from-white to-gray-50',
     
     // Menu colors
-    menuBackground: 'bg-white',
-    menuBorder: 'border-gray-200',
+    menuBackground: 'bg-gray-800/70',
+    menuBorder: 'border-gray-800/90',
     menuShadow: 'shadow-lg',
     
     // Button colors

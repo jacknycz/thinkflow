@@ -8,15 +8,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import InfoIcon from '@mui/icons-material/Info';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import NoteAltIcon from '@mui/icons-material/NoteAlt';
 
 export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, nodes }) {
-  const [isNoteModalOpen, setNoteModalOpen] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isGenerateModalOpen, setGenerateModalOpen] = useState(false);
   const [selectedPromptType, setSelectedPromptType] = useState('idea');
-  const [noteText, setNoteText] = useState('');
-  const [summaryText, setSummaryText] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newSummary, setNewSummary] = useState('');
 
@@ -151,15 +147,6 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
     }
   };
 
-  // save/handle the note on node feature
-  const handleSaveNote = () => {
-    updateNode(nodeId, {
-      note: noteText,
-      summary: summaryText,
-    });
-    setNoteModalOpen(false);
-  };
-
   const handleDeleteNode = () => {
     if (nodeId === 'root') {
       console.warn('Cannot delete the root node.');
@@ -168,16 +155,10 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
     deleteNode(nodeId);
   };
 
-  const handleNoteModalOpen = () => {
-    setNoteText(data.note || '');
-    setSummaryText(data.summary || '');
-    setNoteModalOpen(true);
-  };
-
   return (
     <>
       <div className={`flex gap-1 rounded-lg p-2 border ${menuBackgroundClass} ${menuBorderClass} ${menuShadowClass}`}>
-        <Tooltip position="top" content="Add idea">
+        <Tooltip position="bottom" content="Add idea">
           <IconButton
             size="small"
             variant="primary"
@@ -191,7 +172,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </IconButton>
         </Tooltip>
 
-        <Tooltip position="top" content="Generate AI Idea">
+        <Tooltip position="bottom" content="Generate AI Idea">
           <IconButton
             size="small"
             variant="primary"
@@ -205,22 +186,10 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </IconButton>
         </Tooltip>
 
-        <Tooltip position="top" content="View note">
-          <IconButton
-            size="small"
-            variant="primary"
-            shape="circle"
-            onClick={e => {
-              e.stopPropagation();
-              handleNoteModalOpen();
-            }}
-          >
-            <InfoIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+
 
         {nodeId !== 'root' && (
-          <Tooltip position="top" content="Delete Node">
+          <Tooltip position="bottom" content="Delete Node">
             <IconButton
               size="small"
               variant="primary"
@@ -235,19 +204,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </Tooltip>
         )}
 
-        <Tooltip position="top" content="Edit Note">
-          <IconButton
-            size="small"
-            variant="primary"
-            shape="circle"
-            onClick={e => {
-              e.stopPropagation();
-              handleNoteModalOpen();
-            }}
-          >
-            <NoteAltIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+
       </div>
 
       {/* Add Idea Modal */}
@@ -277,26 +234,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
         </div>
       </Modal>
 
-      {/* Note Modal */}
-      <Modal isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
-        <div className="space-y-4">
-          <TextArea
-            label="Note"
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="Enter your note..."
-            rows={4}
-          />
-        </div>
-        <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={() => setNoteModalOpen(false)} className="mr-2">
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSaveNote}>
-            Save Note
-          </Button>
-        </div>
-      </Modal>
+
 
       {/* Generate AI Type Modal */}
       <Modal isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
