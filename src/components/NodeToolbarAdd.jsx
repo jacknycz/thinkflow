@@ -1,0 +1,332 @@
+import React, { useState } from 'react';
+import { IconButton, Modal, TextArea, TextInput, Button, Tooltip } from 'pres-start-core';
+import { useReactFlow } from 'reactflow';
+import { generateSingleIdea } from '../utils/openai';
+import { useNodesStore } from '../hooks/useNodesStore';
+import { useThemeStore } from '../hooks/useThemeStore';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import InfoIcon from '@mui/icons-material/Info';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import NoteAltIcon from '@mui/icons-material/NoteAlt';
+
+export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, nodes }) {
+  const [isNoteModalOpen, setNoteModalOpen] = useState(false);
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [isGenerateModalOpen, setGenerateModalOpen] = useState(false);
+  const [selectedPromptType, setSelectedPromptType] = useState('idea');
+  const [noteText, setNoteText] = useState('');
+  const [summaryText, setSummaryText] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newSummary, setNewSummary] = useState('');
+
+  const reactFlowInstance = useReactFlow();
+  const deleteNode = useNodesStore((state) => state.deleteNode);
+  const activeRootId = useNodesStore((state) => state.activeRootId);
+  
+  // Theme store - subscribe to currentTheme to trigger re-renders
+  const currentTheme = useThemeStore((state) => state.currentTheme);
+  const getThemeProperty = useThemeStore((state) => state.getThemeProperty);
+
+  // Get theme properties
+  const menuBackgroundClass = getThemeProperty('menuBackground');
+  const menuBorderClass = getThemeProperty('menuBorder');
+  const menuShadowClass = getThemeProperty('menuShadow');
+
+  console.log(`🎨 NodeToolbarAdd theme classes:`, {
+    menuBackground: menuBackgroundClass,
+    menuBorder: menuBorderClass,
+    menuShadow: menuShadowClass,
+    currentTheme
+  });
+
+  // add node from the node button
+  const handleAdd = () => {
+    setNewTitle('');
+    setNewSummary('');
+    setAddModalOpen(true);
+  };
+
+  // "confirm" the add node
+  const handleConfirmAdd = () => {
+    const label = newTitle.trim();
+    const summary = newSummary.trim();
+    if (label) {
+      const fullLabel = label + (summary ? `\n${summary}` : '');
+      
+      const currentTime = Date.now();
+      const randomOffset = Math.sin(currentTime) * 50;
+      
+      const offset = 160;
+      const newPosition = {
+        x: reactFlowInstance.getNode(nodeId).position.x + offset + randomOffset,
+        y: reactFlowInstance.getNode(nodeId).position.y + offset + randomOffset,
+      };
+      
+      const dx = newPosition.x - reactFlowInstance.getNode(nodeId).position.x;
+      const dy = newPosition.y - reactFlowInstance.getNode(nodeId).position.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      
+      let sourceHandle = 'right-source';
+      let targetHandle = 'left-target';
+      
+      if (absDx > absDy) {
+        sourceHandle = dx > 0 ? 'right-source' : 'left-source';
+        targetHandle = dx > 0 ? 'left-target' : 'right-target';
+      } else {
+        sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
+        targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
+      }
+      
+      addNode(nodeId, fullLabel, '', newPosition, {
+        sourceHandle,
+        targetHandle,
+        parentId: nodeId
+      });
+    }
+    setAddModalOpen(false);
+  };
+
+  // handle Generate AI modal confirmed generate
+  const handleGenerateAIConfirm = async () => {
+    setGenerateModalOpen(false);
+    window.dispatchEvent(new CustomEvent('ai-thinking-start'));
+    try {
+      const rootNode = nodes.find(n => n.id === activeRootId)?.data?.label || '';
+      const parentNodes = [];
+      let parentId = data.parentId;
+      while (parentId && parentId !== 'root') {
+        const parent = nodes.find(n => n.id === parentId);
+        if (parent) {
+          parentNodes.unshift(parent.data?.label || '');
+          parentId = parent.data?.parentId;
+        } else {
+          break;
+        }
+      }
+      const currentNode = data.label || '';
+
+      const ideaText = await generateSingleIdea({
+        rootNode,
+        parentNodes,
+        currentNode,
+        promptType: selectedPromptType,
+      });
+
+      if (ideaText && typeof ideaText === 'string') {
+        const currentNodeObj = reactFlowInstance.getNode(nodeId);
+        const offset = 160;
+        const currentTime = Date.now();
+        const randomOffset = Math.sin(currentTime) * 50;
+        const newPosition = {
+          x: currentNodeObj.position.x + offset + randomOffset,
+          y: currentNodeObj.position.y + offset + randomOffset,
+        };
+        const dx = newPosition.x - currentNodeObj.position.x;
+        const dy = newPosition.y - currentNodeObj.position.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        let sourceHandle = 'right-source';
+        let targetHandle = 'left-target';
+        if (absDx > absDy) {
+          sourceHandle = dx > 0 ? 'right-source' : 'left-source';
+          targetHandle = dx > 0 ? 'left-target' : 'right-target';
+        } else {
+          sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
+          targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
+        }
+        addNode(nodeId, ideaText, '', newPosition, {
+          sourceHandle,
+          targetHandle,
+          parentId: nodeId,
+        });
+      } else {
+        console.error('Failed to generate AI idea:', ideaText);
+      }
+    } catch (error) {
+      console.error('Error generating AI idea:', error);
+    } finally {
+      window.dispatchEvent(new CustomEvent('ai-thinking-end'));
+    }
+  };
+
+  // save/handle the note on node feature
+  const handleSaveNote = () => {
+    updateNode(nodeId, {
+      note: noteText,
+      summary: summaryText,
+    });
+    setNoteModalOpen(false);
+  };
+
+  const handleDeleteNode = () => {
+    if (nodeId === 'root') {
+      console.warn('Cannot delete the root node.');
+      return;
+    }
+    deleteNode(nodeId);
+  };
+
+  const handleNoteModalOpen = () => {
+    setNoteText(data.note || '');
+    setSummaryText(data.summary || '');
+    setNoteModalOpen(true);
+  };
+
+  return (
+    <>
+      <div className={`flex gap-1 rounded-lg p-2 border ${menuBackgroundClass} ${menuBorderClass} ${menuShadowClass}`}>
+        <Tooltip position="top" content="Add idea">
+          <IconButton
+            size="small"
+            variant="primary"
+            shape="circle"
+            onClick={e => {
+              e.stopPropagation();
+              handleAdd();
+            }}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip position="top" content="Generate AI Idea">
+          <IconButton
+            size="small"
+            variant="primary"
+            shape="circle"
+            onClick={e => {
+              e.stopPropagation();
+              setGenerateModalOpen(true);
+            }}
+          >
+            <AutoAwesomeIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip position="top" content="View note">
+          <IconButton
+            size="small"
+            variant="primary"
+            shape="circle"
+            onClick={e => {
+              e.stopPropagation();
+              handleNoteModalOpen();
+            }}
+          >
+            <InfoIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {nodeId !== 'root' && (
+          <Tooltip position="top" content="Delete Node">
+            <IconButton
+              size="small"
+              variant="primary"
+              shape="circle"
+              onClick={e => {
+                e.stopPropagation();
+                handleDeleteNode();
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        <Tooltip position="top" content="Edit Note">
+          <IconButton
+            size="small"
+            variant="primary"
+            shape="circle"
+            onClick={e => {
+              e.stopPropagation();
+              handleNoteModalOpen();
+            }}
+          >
+            <NoteAltIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </div>
+
+      {/* Add Idea Modal */}
+      <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
+        <div className="space-y-4">
+          <TextInput
+            label="Title"
+            placeholder="New idea title"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+          />
+          <TextArea
+            label="Summary"
+            placeholder="Optional summary"
+            rows={2}
+            value={newSummary}
+            onChange={(e) => setNewSummary(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setAddModalOpen(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleConfirmAdd}>
+            Add Idea
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Note Modal */}
+      <Modal isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
+        <div className="space-y-4">
+          <TextArea
+            label="Note"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Enter your note..."
+            rows={4}
+          />
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setNoteModalOpen(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSaveNote}>
+            Save Note
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Generate AI Type Modal */}
+      <Modal isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
+        <div className="space-y-4">
+          <p className="font-semibold">As...</p>
+          <div className="flex flex-col space-y-2">
+            {['question', 'idea', 'task', 'note'].map((type) => (
+              <label key={type} className="inline-flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="promptType"
+                  value={type}
+                  checked={selectedPromptType === type}
+                  onChange={() => setSelectedPromptType(type)}
+                  className="form-radio text-blue-600"
+                />
+                <span className="capitalize">{type}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleGenerateAIConfirm}>
+            Generate
+          </Button>
+        </div>
+      </Modal>
+    </>
+  );
+} 

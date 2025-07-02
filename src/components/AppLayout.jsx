@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TopBar } from './TopBar';
 import Canvas from './Canvas';
 import Sidebar from './Sidebar';
 import SetApiKey from './SetApiKey';
+import { useThemeStore } from '../hooks/useThemeStore';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -27,6 +28,12 @@ class ErrorBoundary extends React.Component {
 }
 
 export function AppLayout() {
+  const initializeTheme = useThemeStore((state) => state.initializeTheme);
+
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
+
   return (
     <div className="flex flex-col h-screen">
       <ErrorBoundary>
