@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { IconButton, Tooltip, Modal, TextArea, Button } from 'pres-start-core';
+import { IconButton, Tooltip, Modal, Button } from 'pres-start-core';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import StarIcon from '@mui/icons-material/Star';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { useThemeStore } from '../hooks/useThemeStore';
+// TipTap imports
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Underline from '@tiptap/extension-underline';
+import SimpleEditorToolbar from './SimpleEditorToolbar';
 
 export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
   const [isNoteModalOpen, setNoteModalOpen] = useState(false);
-  const [noteText, setNoteText] = useState('');
-  
+  // Store the note as HTML
+  const [noteHtml, setNoteHtml] = useState('');
+
   const pinNode = useNodesStore(s => s.pinNode);
   const unpinNode = useNodesStore(s => s.unpinNode);
   const makeNodeRoot = useNodesStore(s => s.makeNodeRoot);
@@ -30,14 +37,35 @@ export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
     currentTheme
   });
 
+  // TipTap editor instance
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: true, autolink: true, linkOnPaste: true }),
+      Underline
+    ],
+    content: noteHtml,
+    onUpdate: ({ editor }) => {
+      setNoteHtml(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none min-h-[120px] p-2 rounded-b border border-gray-200 focus:outline-none bg-white',
+      },
+    },
+  });
+
   const handleSaveNote = () => {
-    updateNode(nodeId, { note: noteText });
+    updateNode(nodeId, { note: noteHtml });
     setNoteModalOpen(false);
   };
 
   const handleNoteModalOpen = () => {
-    setNoteText(data.note || '');
+    setNoteHtml(data.note || '');
     setNoteModalOpen(true);
+    setTimeout(() => {
+      if (editor) editor.commands.setContent(data.note || '');
+    }, 0);
   };
 
   return (
@@ -85,15 +113,14 @@ export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
       </div>
 
       {/* Note Modal */}
-      <Modal isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
+      <Modal className="w-full min-w-[400px] max-w-2xl" isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
         <div className="space-y-4">
-          <TextArea
-            label="Note"
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="Enter your note..."
-            rows={4}
-          />
+          {/* TipTap WYSIWYG Editor with Toolbar */}
+          <div className="border border-gray-200 rounded">
+            <SimpleEditorToolbar editor={editor} />
+            <EditorContent editor={editor} />
+          </div>
+          <div className="text-xs text-gray-500">You can format text and add links. (No images supported.)</div>
         </div>
         <div className="flex justify-end mt-4">
           <Button variant="secondary" onClick={() => setNoteModalOpen(false)} className="mr-2">

@@ -208,7 +208,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
       </div>
 
       {/* Add Idea Modal */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
+      <Modal className="w-full min-w-96 max-w-md" isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
         <div className="space-y-4">
           <TextInput
             label="Title"
@@ -237,7 +237,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
 
 
       {/* Generate AI Type Modal */}
-      <Modal isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
+      <Modal className="w-full min-w-96 max-w-md" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
         <div className="space-y-4">
           <p className="font-semibold">As...</p>
           <div className="flex flex-col space-y-2">
