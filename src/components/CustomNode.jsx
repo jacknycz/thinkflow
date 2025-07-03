@@ -80,17 +80,21 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   }
 
   function clampTitleAndSummary(title, summary) {
+    // Clamp to 14 words, or up to 140 chars but never in the middle of a word
     const words = title.split(' ');
-    if (words.length > 10) {
+    if (words.length > 14) {
       return {
-        title: words.slice(0, 10).join(' ') + '…',
-        summary: (words.slice(10).join(' ') + (summary ? ' ' + summary : '')).trim(),
+        title: words.slice(0, 14).join(' ') + '…',
+        summary: (words.slice(14).join(' ') + (summary ? ' ' + summary : '')).trim(),
       };
     }
-    if (title.length > 60) {
+    if (title.length > 140) {
+      // Find the last space before 140 chars
+      let cutoff = title.lastIndexOf(' ', 140);
+      if (cutoff === -1) cutoff = 140; // fallback if no space found
       return {
-        title: title.slice(0, 60) + '…',
-        summary: (title.slice(60) + (summary ? ' ' + summary : '')).trim(),
+        title: title.slice(0, cutoff) + '…',
+        summary: (title.slice(cutoff).trim() + (summary ? ' ' + summary : '')).trim(),
       };
     }
     return { title, summary };
