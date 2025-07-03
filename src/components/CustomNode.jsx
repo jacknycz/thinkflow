@@ -5,9 +5,11 @@ import AddIcon from '@mui/icons-material/Add';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import NodeToolbarPin from './NodeToolbarPin';
 import NodeToolbarAdd from './NodeToolbarAdd';
 import { useNodesStore } from '../hooks/useNodesStore';
+import { uploadFile, getFileUrl } from '../utils/supabase';
 
 import { useReactFlow } from 'reactflow';
 import { generateSingleIdea } from '../utils/openai';
@@ -30,12 +32,8 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   const pinNode = useNodesStore(s => s.pinNode);
   const unpinNode = useNodesStore(s => s.unpinNode);
 
-
-
-  // Split label into title (first 2 lines) and summary (rest)
-  const labelLines = data.label?.split('\n') || [];
-  const title = labelLines.slice(0, 2).join(' ');
-  const summary = labelLines.slice(2).join(' ');
+  // Use robust split for title and summary from label
+  const { title, summary } = splitTitleSummary(data.label || '');
 
   const isPinned = pinnedNodeIds.includes(id);
 
@@ -69,6 +67,74 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
     }, 0);
   };
 
+  // Helper to clamp title to 10 words or 60 chars
+  function clampTitle(title) {
+    const words = title.split(' ');
+    if (words.length > 10) {
+      return words.slice(0, 10).join(' ') + '…';
+    }
+    if (title.length > 60) {
+      return title.slice(0, 60) + '…';
+    }
+    return title;
+  }
+
+  function clampTitleAndSummary(title, summary) {
+    const words = title.split(' ');
+    if (words.length > 10) {
+      return {
+        title: words.slice(0, 10).join(' ') + '…',
+        summary: (words.slice(10).join(' ') + (summary ? ' ' + summary : '')).trim(),
+      };
+    }
+    if (title.length > 60) {
+      return {
+        title: title.slice(0, 60) + '…',
+        summary: (title.slice(60) + (summary ? ' ' + summary : '')).trim(),
+      };
+    }
+    return { title, summary };
+  }
+
+  function splitTitleSummary(text) {
+    if (!text) return { title: '', summary: '' };
+
+    // 1. Split on Explanation: or Summary:
+    const explanationMatch = text.match(/^(.*?)(?:Explanation:|Summary:)(.*)$/is);
+    if (explanationMatch) {
+      let title = explanationMatch[1].trim();
+      let summary = explanationMatch[2].trim();
+      return clampTitleAndSummary(title, summary);
+    }
+
+    // 2. Split on first newline
+    const newlineIdx = text.indexOf('\n');
+    if (newlineIdx > 0) {
+      let title = text.slice(0, newlineIdx).trim();
+      let summary = text.slice(newlineIdx + 1).trim();
+      return clampTitleAndSummary(title, summary);
+    }
+
+    // 3. Split on first period (.)
+    const periodIdx = text.indexOf('. ');
+    if (periodIdx > 0) {
+      let title = text.slice(0, periodIdx + 1).trim();
+      let summary = text.slice(periodIdx + 1).trim();
+      return clampTitleAndSummary(title, summary);
+    }
+
+    // 4. Try to split on colon
+    const colonIdx = text.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 60) {
+      let title = text.slice(0, colonIdx + 1).trim();
+      let summary = text.slice(colonIdx + 1).trim();
+      return clampTitleAndSummary(title, summary);
+    }
+
+    // 5. Fallback: clamp title to 10 words or 60 chars, summary is the rest
+    return clampTitleAndSummary(text, '');
+  }
+
   // Helper for AI Thought
   const handleGenerateAIThought = async () => {
     setAiLoading(true);
@@ -96,20 +162,8 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
         promptType: 'idea',
       });
       if (ideaText && typeof ideaText === 'string') {
-        // Split into title and summary
-        let aiTitle = '';
-        let aiSummary = '';
-        if (ideaText.includes('\n')) {
-          [aiTitle, ...aiSummary] = ideaText.split('\n');
-          aiSummary = aiSummary.join(' ').trim();
-        } else if (ideaText.includes('. ')) {
-          const idx = ideaText.indexOf('. ');
-          aiTitle = ideaText.slice(0, idx + 1);
-          aiSummary = ideaText.slice(idx + 1).trim();
-        } else {
-          aiTitle = ideaText.slice(0, 80);
-          aiSummary = ideaText.slice(80).trim();
-        }
+        // Robustly split into title and summary
+        const { title: aiTitle, summary: aiSummary } = splitTitleSummary(ideaText);
         const fullLabel = aiTitle + (aiSummary ? `\n${aiSummary}` : '');
         const currentNodeObj = reactFlowInstance.getNode(id);
         const offset = 160;
@@ -196,6 +250,72 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
     setShowAddModal(false);
   };
 
+  // File upload handler
+  const handleFileUpload = async (files) => {
+    for (const file of files) {
+      if (file.size > 500 * 1024) {
+        alert(`File ${file.name} is too large (max 500KB)`);
+        continue;
+      }
+      // Helper to chunk file content
+      function chunkFileContent(text, type) {
+        if (type === 'md' || file.name.endsWith('.md')) {
+          // Split by headings or double newlines
+          return text.split(/\n(?=#|##|###|####|#####|######|\n\n)/g).map(s => s.trim()).filter(Boolean);
+        } else if (type === 'txt' || file.name.endsWith('.txt')) {
+          // Split by double newlines or every ~500 chars
+          let paras = text.split(/\n\n+/g).map(s => s.trim()).filter(Boolean);
+          if (paras.length < 2 && text.length > 600) {
+            // fallback: chunk by 500 chars
+            paras = text.match(/.{1,500}/gs) || [];
+          }
+          return paras;
+        } else if (type === 'json' || file.name.endsWith('.json')) {
+          return [text]; // treat as one chunk for now
+        } else if (type === 'csv' || file.name.endsWith('.csv')) {
+          return [text]; // treat as one chunk for now
+        }
+        return [text];
+      }
+      try {
+        // 1. Read file as text
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        // 2. Chunk the file
+        const ext = file.name.split('.').pop().toLowerCase();
+        const chunks = chunkFileContent(text, ext);
+        // 3. Upload file to Supabase
+        const fileData = await uploadFile(file, id);
+        // 4. Store metadata and chunks in node data
+        const existingFiles = data.files || [];
+        const existingChunks = data.fileChunks || [];
+        updateNode(id, {
+          files: [...existingFiles, fileData],
+          fileChunks: [...existingChunks, ...chunks.map((content, i) => ({
+            fileName: file.name,
+            fileType: file.type,
+            fileIndex: i,
+            content,
+            uploadedAt: Date.now(),
+          }))],
+        });
+      } catch (error) {
+        alert('Upload failed: ' + error.message);
+      }
+    }
+  };
+
+  // File download/view handler
+  const handleFileClick = (fileData) => {
+    window.open(fileData.publicUrl || getFileUrl(fileData.supabasePath), '_blank');
+  };
+
+  const [showFilesMenu, setShowFilesMenu] = useState(false);
+
   return (
     <div
       className={`relative p-5 border rounded-3xl shadow-xl max-w-lg min-w-[340px] transition-all duration-300 glassy-node ${shouldBlur ? 'node-blur' : isFocus ? 'node-focus' : ''}`}
@@ -239,8 +359,46 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
         </div>
       ) : null}
 
-      {/* Title */}
-      <h3 className={`font-semibold text-lg leading-tight mb-1 pb-2 line-clamp-2`} style={{ color: data.nodeColor }}>{title}</h3>
+      {/* Title with attachment indicator and menu */}
+      <div className="flex items-start gap-2 mb-1 pb-2 relative">
+        <h3 className={`font-semibold text-lg leading-tight line-clamp-2 flex-1`} style={{ color: data.nodeColor }}>{title}</h3>
+        {data.files && data.files.length > 0 && (
+          <div className="relative flex items-center">
+            <div
+              className="flex items-center gap-1 text-xs opacity-70 cursor-pointer hover:opacity-100 transition-opacity"
+              style={{ color: data.nodeColor }}
+              onClick={() => setShowFilesMenu(v => !v)}
+              onMouseEnter={() => setShowFilesMenu(true)}
+              onMouseLeave={() => setShowFilesMenu(false)}
+            >
+              <AttachFileIcon fontSize="small" />
+              <span>{data.files.length}</span>
+            </div>
+            {/* Files submenu */}
+            <div
+              className={`absolute left-1/2 -translate-x-1/2 top-full mt-0 min-w-[180px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
+                showFilesMenu ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+              }`}
+              style={{ paddingTop: 0 }}
+              onMouseEnter={() => setShowFilesMenu(true)}
+              onMouseLeave={() => setShowFilesMenu(false)}
+            >
+              {data.files.map((file, idx) => (
+                <a
+                  key={file.supabasePath || file.name + idx}
+                  href={file.publicUrl || getFileUrl(file.supabasePath)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 ${idx === 0 ? 'rounded-t-lg' : ''} ${idx === data.files.length - 1 ? 'rounded-b-lg' : ''}`}
+                  style={{ color: data.nodeColor }}
+                >
+                  {file.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {/* Divider (only if summary) */}
       {summary && <div className="border-t border-white/20 my-2" />}
       {/* Summary */}
@@ -266,6 +424,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
             }
           }}
           handleNoteClick={e => { e.stopPropagation(); handleNoteModalOpen(); }}
+          handleFileUpload={handleFileUpload}
           handleDeleteClick={e => { e.stopPropagation(); updateNode(id, { delete: true }); }}
           canDelete={id !== 'root'}
         />

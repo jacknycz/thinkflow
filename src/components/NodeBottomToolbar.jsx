@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { IconButton, Tooltip } from 'pres-start-core';
 import AddIcon from '@mui/icons-material/Add';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 export default function NodeBottomToolbar({
   onAddClick,
@@ -14,8 +15,20 @@ export default function NodeBottomToolbar({
   handleAddNode,
   handleNoteClick,
   handleDeleteClick,
+  handleFileUpload,
   canDelete,
 }) {
+  const fileInputRef = useRef(null);
+
+  const handleFileInputChange = (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length && handleFileUpload) {
+      handleFileUpload(files);
+    }
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+  };
+
   return (
     <div className="flex w-full h-12 rounded-full border border-white/20 shadow-lg bg-white/5">
       {/* Add Button with submenu */}
@@ -50,6 +63,25 @@ export default function NodeBottomToolbar({
           type="button"
         >
           <NoteAltIcon fontSize="medium" className="text-white mx-auto" />
+        </button>
+      </div>
+      {/* Upload Button */}
+      <div className="flex-1 h-full flex items-center justify-center">
+        <button
+          className="w-full h-full flex items-center justify-center bg-transparent hover:bg-white/20 transition-colors duration-200 rounded-none text-white"
+          onClick={() => fileInputRef.current?.click()}
+          tabIndex={0}
+          type="button"
+        >
+          <AttachFileIcon fontSize="medium" className="text-white mx-auto" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,.json,.csv"
+            multiple
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
         </button>
       </div>
       {/* Delete Button (always render for layout, but hide if not allowed) */}
