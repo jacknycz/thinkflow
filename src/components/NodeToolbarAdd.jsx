@@ -3,7 +3,7 @@ import { IconButton, Modal, TextArea, TextInput, Button, Tooltip } from 'pres-st
 import { useReactFlow } from 'reactflow';
 import { generateSingleIdea } from '../utils/openai';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { useThemeStore } from '../hooks/useThemeStore';
+
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import InfoIcon from '@mui/icons-material/Info';
@@ -20,21 +20,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
   const deleteNode = useNodesStore((state) => state.deleteNode);
   const activeRootId = useNodesStore((state) => state.activeRootId);
   
-  // Theme store - subscribe to currentTheme to trigger re-renders
-  const currentTheme = useThemeStore((state) => state.currentTheme);
-  const getThemeProperty = useThemeStore((state) => state.getThemeProperty);
 
-  // Get theme properties
-  const menuBackgroundClass = getThemeProperty('menuBackground');
-  const menuBorderClass = getThemeProperty('menuBorder');
-  const menuShadowClass = getThemeProperty('menuShadow');
-
-  console.log(`🎨 NodeToolbarAdd theme classes:`, {
-    menuBackground: menuBackgroundClass,
-    menuBorder: menuBorderClass,
-    menuShadow: menuShadowClass,
-    currentTheme
-  });
 
   // add node from the node button
   const handleAdd = () => {
@@ -157,7 +143,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
 
   return (
     <>
-      <div className={`flex gap-1 rounded-lg p-2 border ${menuBackgroundClass} ${menuBorderClass} ${menuShadowClass}`}>
+      <div className="flex gap-1 rounded-lg p-2 border bg-white/10 backdrop-blur-sm border-white/20 shadow-lg">
         <Tooltip position="bottom" content="Add idea">
           <IconButton
             size="small"
@@ -208,7 +194,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
       </div>
 
       {/* Add Idea Modal */}
-      <Modal className="w-full min-w-96 max-w-md" isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
+      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
         <div className="space-y-4">
           <TextInput
             label="Title"
@@ -237,7 +223,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
 
 
       {/* Generate AI Type Modal */}
-      <Modal className="w-full min-w-96 max-w-md" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
+      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
         <div className="space-y-4">
           <p className="font-semibold">As...</p>
           <div className="flex flex-col space-y-2">

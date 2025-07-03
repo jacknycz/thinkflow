@@ -4,7 +4,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 import StarIcon from '@mui/icons-material/Star';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { useThemeStore } from '../hooks/useThemeStore';
+
 // TipTap imports
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -21,21 +21,7 @@ export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
   const unpinNode = useNodesStore(s => s.unpinNode);
   const makeNodeRoot = useNodesStore(s => s.makeNodeRoot);
   
-  // Theme store - subscribe to currentTheme to trigger re-renders
-  const currentTheme = useThemeStore((state) => state.currentTheme);
-  const getThemeProperty = useThemeStore((state) => state.getThemeProperty);
 
-  // Get theme properties
-  const menuBackgroundClass = getThemeProperty('menuBackground');
-  const menuBorderClass = getThemeProperty('menuBorder');
-  const menuShadowClass = getThemeProperty('menuShadow');
-
-  console.log(`🎨 NodeToolbarPin theme classes:`, {
-    menuBackground: menuBackgroundClass,
-    menuBorder: menuBorderClass,
-    menuShadow: menuShadowClass,
-    currentTheme
-  });
 
   // TipTap editor instance
   const editor = useEditor({
@@ -70,7 +56,7 @@ export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
 
   return (
     <>
-      <div className={`flex gap-1 rounded-lg p-2 border ${menuBackgroundClass} ${menuBorderClass} ${menuShadowClass}`}>
+      <div className="flex gap-1 rounded-lg p-2 border bg-white/10 backdrop-blur-sm border-white/20 shadow-lg">
         <Tooltip content={isPinned ? 'Unpin' : 'Pin visually'} position="bottom">
           <IconButton
             size="small"
@@ -113,7 +99,7 @@ export default function NodeToolbarPin({ nodeId, isPinned, data, updateNode }) {
       </div>
 
       {/* Note Modal */}
-      <Modal className="w-full min-w-[400px] max-w-2xl" isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
+      <Modal variant="custom" className="w-full min-w-[400px] max-w-2xl" isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
         <div className="space-y-4">
           {/* TipTap WYSIWYG Editor with Toolbar */}
           <div className="border border-gray-200 rounded">

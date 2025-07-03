@@ -178,7 +178,7 @@ export default function NodeItem({ node }) {
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} title="Add Your Idea">
+      <Modal variant="custom" isOpen={isModalOpen} onClose={() => setModalOpen(false)} title="Add Your Idea">
         <div className="space-y-4">
           <TextInput
             label="Idea Title"
@@ -203,7 +203,7 @@ export default function NodeItem({ node }) {
         </div>
       </Modal>
 
-      <Modal isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
+      <Modal variant="custom" isOpen={isNoteModalOpen} onClose={() => setNoteModalOpen(false)} title="Add/Edit Note">
         <div className="space-y-4">
           <TextArea
             label="Note"

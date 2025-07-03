@@ -286,30 +286,32 @@ export const useNodesStore = create((set, get) => ({
     set({
       pinnedNodeId: nodeId,
       pinnedNodeIds: pinnedFamily,
+      activeRootId: nodeId, // Set the pinned node as the AI root
     });
     console.log('📌 Pinned node family:', { root: nodeId, family: pinnedFamily });
+    console.log('🤖 AI root set to pinned node:', nodeId);
   },
-  unpinNode: () => set({ pinnedNodeId: null, pinnedNodeIds: [] }),
+  unpinNode: () => set({ 
+    pinnedNodeId: null, 
+    pinnedNodeIds: [],
+    activeRootId: 'root', // Reset AI root to original root when unpinning
+  }),
 
   // Active root management (for AI brainstorming)
   activeRootId: 'root', // Default to the structural root
   setActiveRoot: (nodeId) => set({ activeRootId: nodeId }),
 
-  // Make node root
+  // Make node root (now just toggles pinning since pinning sets AI root)
   makeNodeRoot: (nodeId) => {
     const state = get();
     
-    // If clicking on the current active root, revert to original root
-    if (nodeId === state.activeRootId) {
-      set({ activeRootId: 'root' });
-      state.unpinNode(); // Unpin to show full mind map
+    // If clicking on the current pinned node, unpin it (which resets AI root to 'root')
+    if (nodeId === state.pinnedNodeId) {
+      state.unpinNode(); // This will reset activeRootId to 'root'
       return;
     }
     
-    // Set the new active root for AI purposes
-    set({ activeRootId: nodeId });
-    
-    // Automatically pin the new active root
+    // Pin the new node (which automatically sets it as AI root)
     state.pinNode(nodeId);
   },
 }));

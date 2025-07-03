@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button, TextInput, Modal, SelectInput } from 'pres-start-core';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { useThemeStore } from '../hooks/useThemeStore';
+
 
 export const TopBar = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -13,10 +13,7 @@ export const TopBar = () => {
   const updateNode = useNodesStore((state) => state.updateNode);
   const addNode = useNodesStore((state) => state.addNode);
   
-  // Theme store
-  const currentTheme = useThemeStore((state) => state.currentTheme);
-  const themes = useThemeStore((state) => state.themes);
-  const setTheme = useThemeStore((state) => state.setTheme);
+
 
   // Initialize input value when root node changes
   React.useEffect(() => {
@@ -55,9 +52,7 @@ export const TopBar = () => {
     setNewTopic('');
   };
 
-  const handleThemeChange = (themeName) => {
-    setTheme(themeName);
-  };
+
 
   return (
     <>
@@ -91,25 +86,12 @@ export const TopBar = () => {
           </div>
         )}
 
-        {/* Theme Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-300 text-sm">Theme:</span>
-          <SelectInput
-            value={currentTheme}
-            onChange={(e) => handleThemeChange(e.target.value)}
-            className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500 min-w-[120px]"
-          >
-            {themes.map((theme) => (
-              <option key={theme} value={theme} className="bg-gray-800 text-white">
-                {theme.charAt(0).toUpperCase() + theme.slice(1)}
-              </option>
-            ))}
-          </SelectInput>
-        </div>
+
       </header>
 
       {/* Update Confirmation Modal */}
       <Modal 
+        variant="custom"
         isOpen={isUpdateModalOpen} 
         onClose={handleUpdateCancel} 
         title="Update Root Topic"

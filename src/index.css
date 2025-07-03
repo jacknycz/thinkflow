@@ -51,3 +51,57 @@ body.theme-white {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+@layer utilities {
+  /* P-color text utilities */
+  .color-p-50 { @apply text-p-50; }
+  .color-p-100 { @apply text-p-100; }
+  .color-p-200 { @apply text-p-200; }
+  .color-p-300 { @apply text-p-300; }
+  .color-p-400 { @apply text-p-400; }
+  .color-p-500 { @apply text-p-500; }
+  .color-p-600 { @apply text-p-600; }
+  .color-p-700 { @apply text-p-700; }
+  .color-p-800 { @apply text-p-800; }
+  .color-p-900 { @apply text-p-900; }
+  .color-p-950 { @apply text-p-950; }
+  
+  /* P-color background utilities */
+  .bg-color-p-50 { @apply bg-p-50; }
+  .bg-color-p-100 { @apply bg-p-100; }
+  .bg-color-p-200 { @apply bg-p-200; }
+  .bg-color-p-300 { @apply bg-p-300; }
+  .bg-color-p-400 { @apply bg-p-400; }
+  .bg-color-p-500 { @apply bg-p-500; }
+  .bg-color-p-600 { @apply bg-p-600; }
+  .bg-color-p-700 { @apply bg-p-700; }
+  .bg-color-p-800 { @apply bg-p-800; }
+  .bg-color-p-900 { @apply bg-p-900; }
+  .bg-color-p-950 { @apply bg-p-950; }
+  
+  /* P-color border utilities */
+  .border-color-p-50 { @apply border-p-50; }
+  .border-color-p-100 { @apply border-p-100; }
+  .border-color-p-200 { @apply border-p-200; }
+  .border-color-p-300 { @apply border-p-300; }
+  .border-color-p-400 { @apply border-p-400; }
+  .border-color-p-500 { @apply border-p-500; }
+  .border-color-p-600 { @apply border-p-600; }
+  .border-color-p-700 { @apply border-p-700; }
+  .border-color-p-800 { @apply border-p-800; }
+  .border-color-p-900 { @apply border-p-900; }
+  .border-color-p-950 { @apply border-p-950; }
+}
+
+@layer components {
+  /* Target the modal's outer class (example: .pres-modal) */
+  .pres-modal {
+    @apply relative rounded-3xl shadow-xl border p-6;
+    background: radial-gradient(circle, transparent 10%, #e5e7eb99 100%);
+    border: 1px solid #e5e7eb99;
+  }
+  /* Or target inner elements if needed */
+  .pres-modal .pres-modal-close-button {
+    @apply bg-gray-800/90 rounded-full border border-white/60 color-p-500 -top-4 -right-4;
+  }
+}

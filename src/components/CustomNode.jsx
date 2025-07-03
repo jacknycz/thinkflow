@@ -1,101 +1,210 @@
-import React, { useState, useEffect } from 'react';
-import { Handle, Position, useReactFlow } from 'reactflow';
+import React, { useState } from 'react';
+import { Handle, Position } from 'reactflow';
+import { IconButton, Tooltip, Button, Modal } from 'pres-start-core';
+import AddIcon from '@mui/icons-material/Add';
+import NoteAltIcon from '@mui/icons-material/NoteAlt';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import NodeToolbarPin from './NodeToolbarPin';
+import NodeToolbarAdd from './NodeToolbarAdd';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { useThemeStore } from '../hooks/useThemeStore';
-import NodeMenu from './NodeMenu';
 
-export default function CustomNode({ id, data, addNode, updateNode = () => {}, nodes }) {
+import { useReactFlow } from 'reactflow';
+import { generateSingleIdea } from '../utils/openai';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Underline from '@tiptap/extension-underline';
+import SimpleEditorToolbar from './SimpleEditorToolbar';
+import NodeBottomToolbar from './NodeBottomToolbar';
+
+export default function CustomNode({ id, data, addNode, updateNode = () => { }, nodes }) {
   const [hovered, setHovered] = useState(false);
-
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const reactFlowInstance = useReactFlow();
-  const hoveredNodeId = useNodesStore((state) => state.hoveredNodeId);
-  const setHoveredNode = useNodesStore((state) => state.setHoveredNode);
-  const clearHoveredNode = useNodesStore((state) => state.clearHoveredNode);
-  const draggedNodeId = useNodesStore((state) => state.draggedNodeId);
-  const pinnedNodeId = useNodesStore((state) => state.pinnedNodeId);
+
   const pinnedNodeIds = useNodesStore((state) => state.pinnedNodeIds);
   const activeRootId = useNodesStore((state) => state.activeRootId);
+  const pinNode = useNodesStore(s => s.pinNode);
+  const unpinNode = useNodesStore(s => s.unpinNode);
 
-  // Theme store - subscribe to currentTheme to trigger re-renders
-  const currentTheme = useThemeStore((state) => state.currentTheme);
-  const getThemeProperty = useThemeStore((state) => state.getThemeProperty);
 
-  // Update connection when node position changes
-  useEffect(() => {
-    if (id === 'root' || data.parentId !== 'root') return;
-
-    const rootNode = nodes.find(n => n.id === 'root');
-    if (!rootNode) return;
-
-    const node = reactFlowInstance.getNode(id);
-    if (!node) return;
-
-    const dx = node.position.x - rootNode.position.x;
-    const dy = node.position.y - rootNode.position.y;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-    
-    let sourceHandle = 'right-source';
-    if (absDx > absDy) {
-      sourceHandle = dx > 0 ? 'right-source' : 'left-source';
-    } else {
-      sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
-    }
-
-    if (sourceHandle !== data.sourceHandle) {
-      console.log('Updating handle to:', sourceHandle);
-      updateNode(id, { sourceHandle });
-    }
-  }, [id, data.parentId, data.sourceHandle, nodes, reactFlowInstance, updateNode]);
 
   // Split label into title (first 2 lines) and summary (rest)
   const labelLines = data.label?.split('\n') || [];
-  const title = labelLines.slice(0, 2).join('\n');
-  const summary = labelLines.slice(2).join('\n');
+  const title = labelLines.slice(0, 2).join(' ');
+  const summary = labelLines.slice(2).join(' ');
 
-  const isHovered = hoveredNodeId === id;
-  const isDragged = draggedNodeId === id;
-  const shouldBlur = (
-    (pinnedNodeId && !pinnedNodeIds.includes(id)) ||
-    (draggedNodeId !== null && draggedNodeId !== id)
-  );
   const isPinned = pinnedNodeIds.includes(id);
 
-  // Get theme properties
-  const nodeTextClass = getThemeProperty('nodeText');
-  const nodeTextSecondaryClass = getThemeProperty('nodeTextSecondary');
-  const nodeBackgroundClass = getThemeProperty('nodeBackground');
-  const nodeBorderClass = getThemeProperty('nodeBorder');
-  const noteBackgroundClass = getThemeProperty('noteBackground');
-  const noteTextClass = getThemeProperty('noteText');
-
-  console.log(`🎨 Node ${id} theme classes:`, {
-    nodeText: nodeTextClass,
-    nodeTextSecondary: nodeTextSecondaryClass,
-    nodeBackground: nodeBackgroundClass,
-    nodeBorder: nodeBorderClass,
-    noteBackground: noteBackgroundClass,
-    noteText: noteTextClass,
-    currentTheme
+  const [noteHtml, setNoteHtml] = useState(data.note || '');
+  // TipTap editor instance for note modal
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: true, autolink: true, linkOnPaste: true }),
+      Underline
+    ],
+    content: noteHtml,
+    onUpdate: ({ editor }) => {
+      setNoteHtml(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none min-h-[120px] p-2 rounded-b border border-gray-200 focus:outline-none bg-white',
+      },
+    },
   });
+  const handleSaveNote = () => {
+    updateNode(id, { note: noteHtml });
+    setShowNoteModal(false);
+  };
+  const handleNoteModalOpen = () => {
+    setNoteHtml(data.note || '');
+    setShowNoteModal(true);
+    setTimeout(() => {
+      if (editor) editor.commands.setContent(data.note || '');
+    }, 0);
+  };
+
+  // Helper for AI Thought
+  const handleGenerateAIThought = async () => {
+    setAiLoading(true);
+    setShowAddMenu(false);
+    window.dispatchEvent(new CustomEvent('ai-thinking-start'));
+    try {
+      // Use the activeRootId from the store (which is set by pinning)
+      const rootNode = nodes.find(n => n.id === activeRootId)?.data?.label || '';
+      const parentNodes = [];
+      let parentId = data.parentId;
+      while (parentId && parentId !== 'root') {
+        const parent = nodes.find(n => n.id === parentId);
+        if (parent) {
+          parentNodes.unshift(parent.data?.label || '');
+          parentId = parent.data?.parentId;
+        } else {
+          break;
+        }
+      }
+      const currentNode = data.label || '';
+      const ideaText = await generateSingleIdea({
+        rootNode,
+        parentNodes,
+        currentNode,
+        promptType: 'idea',
+      });
+      if (ideaText && typeof ideaText === 'string') {
+        // Split into title and summary
+        let aiTitle = '';
+        let aiSummary = '';
+        if (ideaText.includes('\n')) {
+          [aiTitle, ...aiSummary] = ideaText.split('\n');
+          aiSummary = aiSummary.join(' ').trim();
+        } else if (ideaText.includes('. ')) {
+          const idx = ideaText.indexOf('. ');
+          aiTitle = ideaText.slice(0, idx + 1);
+          aiSummary = ideaText.slice(idx + 1).trim();
+        } else {
+          aiTitle = ideaText.slice(0, 80);
+          aiSummary = ideaText.slice(80).trim();
+        }
+        const fullLabel = aiTitle + (aiSummary ? `\n${aiSummary}` : '');
+        const currentNodeObj = reactFlowInstance.getNode(id);
+        const offset = 160;
+        const currentTime = Date.now();
+        const randomOffset = Math.sin(currentTime) * 50;
+        const newPosition = {
+          x: currentNodeObj.position.x + offset + randomOffset,
+          y: currentNodeObj.position.y + offset + randomOffset,
+        };
+        const dx = newPosition.x - currentNodeObj.position.x;
+        const dy = newPosition.y - currentNodeObj.position.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        let sourceHandle = 'right-source';
+        let targetHandle = 'left-target';
+        if (absDx > absDy) {
+          sourceHandle = dx > 0 ? 'right-source' : 'left-source';
+          targetHandle = dx > 0 ? 'left-target' : 'right-target';
+        } else {
+          sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
+          targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
+        }
+        addNode(id, fullLabel, '', newPosition, {
+          sourceHandle,
+          targetHandle,
+          parentId: id,
+        });
+      }
+    } catch (error) {
+      console.error('Error generating AI idea:', error);
+    } finally {
+      setAiLoading(false);
+      window.dispatchEvent(new CustomEvent('ai-thinking-end'));
+    }
+  };
+
+  // Determine blur/focus state for visual pinning
+  const shouldBlur = pinnedNodeIds.length > 0 && !pinnedNodeIds.includes(id);
+  const isFocus = pinnedNodeIds.length > 0 && pinnedNodeIds.includes(id);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newSummary, setNewSummary] = useState('');
+
+  // Handler for Blank Node button
+  const handleBlankNode = () => {
+    setNewTitle('');
+    setNewSummary('');
+    setShowAddModal(true);
+    setShowAddMenu(false);
+  };
+  const handleConfirmAdd = () => {
+    const label = newTitle.trim();
+    const summary = newSummary.trim();
+    if (label) {
+      const fullLabel = label + (summary ? `\n${summary}` : '');
+      const currentNodeObj = reactFlowInstance.getNode(id);
+      const offset = 160;
+      const currentTime = Date.now();
+      const randomOffset = Math.sin(currentTime) * 50;
+      const newPosition = {
+        x: currentNodeObj.position.x + offset + randomOffset,
+        y: currentNodeObj.position.y + offset + randomOffset,
+      };
+      const dx = newPosition.x - currentNodeObj.position.x;
+      const dy = newPosition.y - currentNodeObj.position.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      let sourceHandle = 'right-source';
+      let targetHandle = 'left-target';
+      if (absDx > absDy) {
+        sourceHandle = dx > 0 ? 'right-source' : 'left-source';
+        targetHandle = dx > 0 ? 'left-target' : 'right-target';
+      } else {
+        sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
+        targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
+      }
+      addNode(id, fullLabel, '', newPosition, {
+        sourceHandle,
+        targetHandle,
+        parentId: id
+      });
+    }
+    setShowAddModal(false);
+  };
 
   return (
     <div
-      className={`group relative p-4 border rounded-3xl shadow max-w-96 transition-all duration-300 ${
-        shouldBlur ? 'node-blur' : isPinned ? 'node-focus' : ''
-      } ${id === activeRootId ? 'node-root' : ''} ${nodeBackgroundClass} ${nodeBorderClass}`}
-      style={{ 
-        background: `radial-gradient(circle, transparent 30%, ${data.nodeColor || '#e5e7eb'}40 100%)`,
-        border: `2px solid ${data.nodeColor || '#e5e7eb'}`,
+      className={`relative p-5 border rounded-3xl shadow-xl max-w-lg min-w-[340px] transition-all duration-300 glassy-node ${shouldBlur ? 'node-blur' : isFocus ? 'node-focus' : ''}`}
+      style={{
+        background: `radial-gradient(circle, transparent 10%, ${data.nodeColor || '#e5e7eb'}60 100%)`,
+        border: `1px solid ${data.nodeColor || '#e5e7eb'}`,
       }}
-      onMouseEnter={() => {
-        setHovered(true);
-        setHoveredNode(id);
-      }}
-      onMouseLeave={() => {
-        setHovered(false);
-        clearHoveredNode();
-      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setShowAddMenu(false); }}
     >
       {/* Handles */}
       <Handle type="target" position={Position.Top} id="top-target" />
@@ -107,26 +216,109 @@ export default function CustomNode({ id, data, addNode, updateNode = () => {}, n
       <Handle type="target" position={Position.Left} id="left-target" />
       <Handle type="source" position={Position.Left} id="left-source" />
 
-      {/* Unified Node Menu */}
-      <NodeMenu 
-        nodeId={id} 
-        data={data} 
-        addNode={addNode} 
-        updateNode={updateNode} 
-        nodes={nodes} 
-        isPinned={isPinned}
-      />
+      {/* Focus/Pin Button (top right) - only show when no nodes pinned OR when this node is pinned */}
+      {pinnedNodeIds.length === 0 || isPinned ? (
+        <div className="absolute -top-3 -right-3 z-10">
+          <Tooltip content={isPinned ? 'Unpin' : 'Focus'} position="left">
+            <IconButton
+              size="small"
+              variant="custom"
+              className={`bg-gray-800/90 border transition-all duration-200 ${isPinned
+                  ? 'border border-blue-400 shadow-lg shadow-blue-400/50'
+                  : 'border border-white/60'
+                }`}
+              shape="circle"
+              onClick={e => {
+                e.stopPropagation();
+                isPinned ? unpinNode() : pinNode(id);
+              }}
+            >
+              <CenterFocusStrongIcon fontSize="small" className="text-p-400" />
+            </IconButton>
+          </Tooltip>
+        </div>
+      ) : null}
 
-      <h3 className={`font-normal leading-tight line-clamp-2 whitespace-pre-wrap ${nodeTextClass}`} style={{ color: data.nodeColor || '#374151' }}>{title}</h3>
+      {/* Title */}
+      <h3 className={`font-semibold text-lg leading-tight mb-1 pb-2 line-clamp-2`} style={{ color: data.nodeColor }}>{title}</h3>
+      {/* Divider (only if summary) */}
+      {summary && <div className="border-t border-white/20 my-2" />}
+      {/* Summary */}
       {summary && (
-        <p className={`whitespace-pre-wrap font-light text-sm mt-1 transition-opacity duration-200 ${
-          hovered ? 'opacity-100' : 'opacity-0'
-        } ${nodeTextSecondaryClass}`} style={{ color: data.nodeColor || '#6b7280' }}>
-          {summary}
-        </p>
+        <p className={`whitespace-pre-wrap font-normal text-sm mb-3`} style={{ color: data.nodeColor }}>{summary}</p>
       )}
 
+      {/* Toolbar (bottom) */}
+      <div className="mt-2">
+        <NodeBottomToolbar
+          onAddClick={e => { e.stopPropagation(); setShowAddMenu(v => !v); }}
+          onAddMenuEnter={() => setShowAddMenu(true)}
+          onAddMenuLeave={() => setShowAddMenu(false)}
+          showAddMenu={showAddMenu}
+          aiLoading={aiLoading}
+          handleGenerateAIThought={handleGenerateAIThought}
+          handleAddNode={type => {
+            if (type === 'Blank Node') {
+              handleBlankNode();
+            } else {
+              addNode(id, type, '', {}, {});
+              setShowAddMenu(false);
+            }
+          }}
+          handleNoteClick={e => { e.stopPropagation(); handleNoteModalOpen(); }}
+          handleDeleteClick={e => { e.stopPropagation(); updateNode(id, { delete: true }); }}
+          canDelete={id !== 'root'}
+        />
+      </div>
 
+      {/* Note Modal with TipTap editor and toolbar */}
+      <Modal variant="custom" className="w-full min-w-[400px] max-w-2xl" isOpen={showNoteModal} onClose={() => setShowNoteModal(false)} title="Add/Edit Note">
+        <h3 className="text-lg font-semibold mb-4 text-white truncate max-w-full">
+          "{title}" Note
+        </h3>
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded">
+            <SimpleEditorToolbar editor={editor} />
+            <EditorContent editor={editor} />
+          </div>
+          <div className="text-xs text-white">You can format text and add links. (No images supported.)</div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setShowNoteModal(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSaveNote}>
+            Save Note
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Add Idea Modal for Blank Node */}
+      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Idea">
+        <div className="space-y-4">
+          <input
+            className="w-full border rounded px-3 py-2 text-base"
+            placeholder="New idea title"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+          />
+          <textarea
+            className="w-full border rounded px-3 py-2 text-base"
+            placeholder="Optional summary"
+            rows={2}
+            value={newSummary}
+            onChange={e => setNewSummary(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setShowAddModal(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleConfirmAdd}>
+            Add Idea
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
