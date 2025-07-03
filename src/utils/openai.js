@@ -16,7 +16,7 @@ export async function generateIdea(rootLabel, detailLabel = '', temperature = 0.
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
+        'HTTP-Referer': window.location.origin,
         'X-Title': 'ThinkFlow',
       },
       body: JSON.stringify({
@@ -121,7 +121,7 @@ export async function generateSingleIdea({ rootNode, parentNodes = [], currentNo
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
+        'HTTP-Referer': window.location.origin,
         'X-Title': 'ThinkFlow',
       },
       body: JSON.stringify({
@@ -163,7 +163,7 @@ export async function generateIdeaBuffet({ userPrompt, rootNode, numberOfIdeas =
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
+        'HTTP-Referer': window.location.origin,
         'X-Title': 'ThinkFlow',
       },
       body: JSON.stringify({
