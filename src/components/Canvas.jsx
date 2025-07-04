@@ -1,5 +1,5 @@
 // src/components/Canvas.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -12,10 +12,6 @@ import 'reactflow/dist/style.css';
 import { useNodesStore } from '../hooks/useNodesStore';
 import CustomNodeWrapper from './CustomNodeWrapper';
 import { fetchBackgroundImage } from '../utils/unsplash';
-
-const nodeTypes = {
-  custom: CustomNodeWrapper,
-};
 
 // Custom edge component with neon glow
 const NeonEdge = ({ id, source, target, sourceHandle, targetHandle, style, data }) => {
@@ -41,16 +37,21 @@ const NeonEdge = ({ id, source, target, sourceHandle, targetHandle, style, data 
   );
 };
 
-const edgeTypes = {
-  neon: NeonEdge,
-};
-
 export default function Canvas() {
   const [backgroundImage, setBackgroundImage] = useState(null);
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [thinkingTime, setThinkingTime] = useState(0);
   const reactFlowRef = useRef(null);
+
+  // Memoize nodeTypes and edgeTypes to prevent React Flow warnings
+  const nodeTypes = useMemo(() => ({
+    custom: CustomNodeWrapper,
+  }), []);
+
+  const edgeTypes = useMemo(() => ({
+    neon: NeonEdge,
+  }), []);
 
   const {
     nodes,
@@ -362,7 +363,7 @@ export default function Canvas() {
   };
 
   // Apply neon styling to edges
-  const styledEdges = edges.map(edge => {
+  const styledEdges = useMemo(() => edges.map(edge => {
     const targetNode = nodes.find(n => n.id === edge.target);
     const sourceNode = nodes.find(n => n.id === edge.source);
     const edgeColor = targetNode?.data?.nodeColor || '#ffffff';
@@ -392,7 +393,7 @@ export default function Canvas() {
         filter: shouldBlurEdge ? 'blur(2px) opacity(0.3)' : 'none',
       },
     };
-  });
+  }), [edges, nodes, pinnedNodeId, pinnedNodeIds, draggedNodeId]);
 
   // console.log('🎨 Rendering nodes:', nodes);
 

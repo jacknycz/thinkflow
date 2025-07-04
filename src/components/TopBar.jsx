@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button, TextInput, Modal, SelectInput } from 'pres-start-core';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { useAuth } from '../hooks/useAuth';
+import FlowManager from './FlowManager';
 
 
 export const TopBar = () => {
@@ -19,8 +20,22 @@ export const TopBar = () => {
 
   // Initialize input value when root node changes
   React.useEffect(() => {
-    setInputValue(rootNode?.data?.label || '');
+    if (rootNode?.data?.label) {
+      setInputValue(rootNode.data.label);
+    } else {
+      // Clear input when there's no root node
+      setInputValue('');
+    }
   }, [rootNode?.data?.label]);
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 TopBar Debug:', {
+      rootNode: rootNode?.data?.label,
+      inputValue,
+      hasRootNode: !!rootNode
+    });
+  }, [rootNode, inputValue]);
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
@@ -87,6 +102,9 @@ export const TopBar = () => {
             </Button>
           </div>
         )}
+
+        {/* Flow Management */}
+        <FlowManager />
 
         {/* Sign Out Button */}
         <Button 

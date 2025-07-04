@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { TopBar } from './TopBar';
 import Canvas from './Canvas';
 import Sidebar from './Sidebar';
-import SetApiKey from './SetApiKey';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNodesStore } from '../hooks/useNodesStore';
+import { getActiveFlow } from '../utils/supabase';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -30,20 +30,27 @@ class ErrorBoundary extends React.Component {
 
 export function AppLayout() {
   const { user } = useAuth();
-  const loadNodes = useNodesStore((state) => state.loadNodes);
+  const setNodes = useNodesStore((state) => state.setNodes);
+  const setEdges = useNodesStore((state) => state.setEdges);
 
   useEffect(() => {
-    if (user) {
-      loadNodes();
+    async function loadInitialFlow() {
+      if (user) {
+        const active = await getActiveFlow();
+        if (active && active.flow_data) {
+          setNodes(active.flow_data.nodes || []);
+          setEdges(active.flow_data.edges || []);
+        }
+      }
     }
-  }, [user, loadNodes]);
+    loadInitialFlow();
+  }, [user, setNodes, setEdges]);
 
   return (
     <div className="flex flex-col h-screen">
       <ErrorBoundary>
         <TopBar />
       </ErrorBoundary>
-      <SetApiKey />
       
       <div className="flex flex-1 overflow-hidden">
         <Canvas />
