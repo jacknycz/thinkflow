@@ -16,6 +16,7 @@ export default function NodeBottomToolbar({
   handleNoteClick,
   handleDeleteClick,
   handleFileUpload,
+  handlePrompt,
   canDelete,
 }) {
   const fileInputRef = useRef(null);
@@ -49,6 +50,7 @@ export default function NodeBottomToolbar({
           style={{ paddingTop: 0 }}
         >
           <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-t-lg disabled:opacity-60" onClick={handleGenerateAIThought} disabled={aiLoading}>{aiLoading ? 'Generating...' : '+ AI Thought'}</button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={handlePrompt}>+ Prompt</button>
           <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Question')}>+ AI Question</button>
           <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Ramble')}>+ AI Ramble</button>
           <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-b-lg" onClick={() => handleAddNode('Blank Node')}>+ Blank Node</button>

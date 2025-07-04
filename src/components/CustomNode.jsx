@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
-import { IconButton, Tooltip, Button, Modal } from 'pres-start-core';
+import { IconButton, Tooltip, Button, Modal, TextArea } from 'pres-start-core';
 import AddIcon from '@mui/icons-material/Add';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -9,7 +9,8 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import NodeToolbarPin from './NodeToolbarPin';
 import NodeToolbarAdd from './NodeToolbarAdd';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { uploadFile, getFileUrl } from '../utils/supabase';
+import { uploadFile, getFileUrl, storeChunkEmbedding, searchSimilarContent } from '../utils/supabase';
+import { getOpenAIEmbedding, generatePromptWithContext } from '../utils/openai';
 
 import { useReactFlow } from 'reactflow';
 import { generateSingleIdea } from '../utils/openai';
@@ -24,7 +25,9 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   const [hovered, setHovered] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showPromptModal, setShowPromptModal] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [promptText, setPromptText] = useState('');
   const reactFlowInstance = useReactFlow();
 
   const pinnedNodeIds = useNodesStore((state) => state.pinnedNodeIds);
@@ -307,6 +310,22 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
             uploadedAt: Date.now(),
           }))],
         });
+        // 5. Embed and store each chunk in Supabase
+        for (let i = 0; i < chunks.length; i++) {
+          const content = chunks[i];
+          try {
+            const embedding = await getOpenAIEmbedding(content);
+            await storeChunkEmbedding({
+              nodeId: id,
+              fileName: file.name,
+              chunkIndex: i,
+              content,
+              embedding,
+            });
+          } catch (embedErr) {
+            console.error('Embedding error for chunk', i, embedErr);
+          }
+        }
       } catch (error) {
         alert('Upload failed: ' + error.message);
       }
@@ -319,6 +338,97 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   };
 
   const [showFilesMenu, setShowFilesMenu] = useState(false);
+
+  // Helper for Prompt with vector search
+  const handlePrompt = async () => {
+    setShowAddMenu(false);
+    setShowPromptModal(true);
+  };
+
+  const handlePromptSubmit = async () => {
+    if (!promptText.trim()) return;
+    
+    setAiLoading(true);
+    setShowPromptModal(false);
+    window.dispatchEvent(new CustomEvent('ai-thinking-start'));
+    
+    try {
+      // Get node context
+      const rootNode = nodes.find(n => n.id === activeRootId)?.data?.label || '';
+      const parentNodes = [];
+      let parentId = data.parentId;
+      while (parentId && parentId !== 'root') {
+        const parent = nodes.find(n => n.id === parentId);
+        if (parent) {
+          parentNodes.unshift(parent.data?.label || '');
+          parentId = parent.data?.parentId;
+        } else {
+          break;
+        }
+      }
+      const currentNode = data.label || '';
+
+      // Get vector search results
+      let vectorResults = [];
+      try {
+        const queryEmbedding = await getOpenAIEmbedding(promptText);
+        vectorResults = await searchSimilarContent(queryEmbedding, 3);
+      } catch (error) {
+        console.warn('Vector search failed, continuing without context:', error);
+      }
+
+      // Generate response with context
+      const response = await generatePromptWithContext({
+        userPrompt: promptText,
+        rootNode,
+        parentNodes,
+        currentNode,
+        vectorResults,
+        temperature: 0.7,
+      });
+
+      if (response && typeof response === 'string') {
+        // Create a new node with the response
+        const { title: responseTitle, summary: responseSummary } = splitTitleSummary(response);
+        const fullLabel = responseTitle + (responseSummary ? `\n${responseSummary}` : '');
+        
+        const currentNodeObj = reactFlowInstance.getNode(id);
+        const offset = 160;
+        const currentTime = Date.now();
+        const randomOffset = Math.sin(currentTime) * 50;
+        const newPosition = {
+          x: currentNodeObj.position.x + offset + randomOffset,
+          y: currentNodeObj.position.y + offset + randomOffset,
+        };
+        
+        const dx = newPosition.x - currentNodeObj.position.x;
+        const dy = newPosition.y - currentNodeObj.position.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        let sourceHandle = 'right-source';
+        let targetHandle = 'left-target';
+        if (absDx > absDy) {
+          sourceHandle = dx > 0 ? 'right-source' : 'left-source';
+          targetHandle = dx > 0 ? 'left-target' : 'right-target';
+        } else {
+          sourceHandle = dy > 0 ? 'bottom-source' : 'top-source';
+          targetHandle = dy > 0 ? 'top-target' : 'bottom-target';
+        }
+        
+        addNode(id, fullLabel, '', newPosition, {
+          sourceHandle,
+          targetHandle,
+          parentId: id,
+        });
+      }
+    } catch (error) {
+      console.error('Error generating prompt response:', error);
+    } finally {
+      setAiLoading(false);
+      setPromptText('');
+      window.dispatchEvent(new CustomEvent('ai-thinking-end'));
+    }
+  };
 
   return (
     <div
@@ -427,6 +537,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
               setShowAddMenu(false);
             }
           }}
+          handlePrompt={handlePrompt}
           handleNoteClick={e => { e.stopPropagation(); handleNoteModalOpen(); }}
           handleFileUpload={handleFileUpload}
           handleDeleteClick={e => { e.stopPropagation(); updateNode(id, { delete: true }); }}
@@ -479,6 +590,39 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
           </Button>
           <Button variant="primary" onClick={handleConfirmAdd}>
             Add Idea
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Prompt Modal */}
+      <Modal variant="custom" className="w-full min-w-[500px] max-w-2xl" isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} title="Ask AI with Context">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Your prompt (will be enhanced with node context and uploaded files):
+            </label>
+            <TextArea
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              placeholder="Ask anything about this topic or related to your uploaded files..."
+              rows={4}
+              className="w-full"
+            />
+          </div>
+          <div className="text-xs text-gray-300">
+            💡 The AI will prioritize your uploaded files and node context over general knowledge.
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setShowPromptModal(false)} className="mr-2">
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handlePromptSubmit}
+            disabled={!promptText.trim() || aiLoading}
+          >
+            {aiLoading ? 'Generating...' : 'Ask AI'}
           </Button>
         </div>
       </Modal>
