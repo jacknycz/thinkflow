@@ -3,7 +3,8 @@ import { TopBar } from './TopBar';
 import Canvas from './Canvas';
 import Sidebar from './Sidebar';
 import SetApiKey from './SetApiKey';
-
+import { useAuth } from '../hooks/useAuth.jsx';
+import { useNodesStore } from '../hooks/useNodesStore';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -28,6 +29,14 @@ class ErrorBoundary extends React.Component {
 }
 
 export function AppLayout() {
+  const { user } = useAuth();
+  const loadNodes = useNodesStore((state) => state.loadNodes);
+
+  useEffect(() => {
+    if (user) {
+      loadNodes();
+    }
+  }, [user, loadNodes]);
 
   return (
     <div className="flex flex-col h-screen">

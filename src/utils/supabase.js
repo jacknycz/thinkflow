@@ -36,31 +36,51 @@ export function getFileUrl(filePath) {
 
 // Store a chunk embedding and metadata in node_file_embeddings
 export async function storeChunkEmbedding({ nodeId, fileName, chunkIndex, content, embedding }) {
-  const { error } = await supabase
-    .from('node_file_embeddings')
-    .insert([{ node_id: nodeId, file_name: fileName, chunk_index: chunkIndex, content, embedding }]);
-  if (error) throw error;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('node_file_embeddings')
+      .insert([{ 
+        node_id: nodeId, 
+        file_name: fileName, 
+        chunk_index: chunkIndex, 
+        content, 
+        embedding,
+        user_id: user.id 
+      }]);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error storing embedding:', error);
+    throw error;
+  }
 }
 
 // Vector similarity search using pgvector
 export async function searchSimilarContent(queryEmbedding, limit = 5) {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     // Try using the RPC function first (if it exists)
     const { data, error } = await supabase.rpc('match_embeddings', {
       query_embedding: queryEmbedding,
       match_threshold: 0.7,
-      match_count: limit
+      match_count: limit,
+      user_id: user.id
     });
     
     if (!error) {
       return data || [];
     }
     
-    // Fallback: use direct SQL query
+    // Fallback: use direct SQL query with user filter
     console.log('RPC function not found, trying direct SQL query...');
     const { data: sqlData, error: sqlError } = await supabase
       .from('node_file_embeddings')
       .select('id, node_id, file_name, chunk_index, content')
+      .eq('user_id', user.id)
       .order(`embedding <-> '[${queryEmbedding.join(',')}]'::vector`)
       .limit(limit);
     
@@ -70,6 +90,7 @@ export async function searchSimilarContent(queryEmbedding, limit = 5) {
       const { data: recentData, error: recentError } = await supabase
         .from('node_file_embeddings')
         .select('id, node_id, file_name, chunk_index, content')
+        .eq('user_id', user.id)
         .order('id', { ascending: false })
         .limit(limit);
       

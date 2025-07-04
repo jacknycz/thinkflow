@@ -1,6 +1,7 @@
 // src/hooks/useNodesStore.js
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
+import { supabase } from '../utils/supabase';
 
 export const useNodesStore = create((set, get) => ({
   // set empty canvas
@@ -23,6 +24,89 @@ export const useNodesStore = create((set, get) => ({
   // get the root node
   getRootNode: () => get().nodes.find((n) => n.id === 'root'),
 
+  // Load nodes from database for current user
+  loadNodes: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('nodes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const nodes = data.map(node => ({
+          id: node.id,
+          type: node.type || 'custom',
+          position: node.position,
+          data: node.data,
+        }));
+
+        // Reconstruct edges from parent relationships
+        const edges = [];
+        nodes.forEach(node => {
+          if (node.data.parentId && node.data.parentId !== 'root') {
+            edges.push({
+              id: `${node.data.parentId}->${node.id}`,
+              source: node.data.parentId,
+              target: node.id,
+              sourceHandle: node.data.sourceHandle || 'right-source',
+              targetHandle: node.data.targetHandle || 'left-target',
+            });
+          }
+        });
+
+        set({ nodes, edges });
+      }
+    } catch (error) {
+      console.error('Error loading nodes:', error);
+    }
+  },
+
+  // Save node to database
+  saveNode: async (node) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('nodes')
+        .upsert({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: node.data,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving node:', error);
+    }
+  },
+
+  // Delete node from database
+  deleteNodeFromDB: async (nodeId) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('nodes')
+        .delete()
+        .eq('id', nodeId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting node:', error);
+    }
+  },
+
   updateNode: (id, updates) =>
     set((state) => {
       const node = state.nodes.find(n => n.id === id);
@@ -36,9 +120,14 @@ export const useNodesStore = create((set, get) => ({
           if (updates.sourceHandle) edgeUpdates.sourceHandle = updates.sourceHandle;
           if (updates.targetHandle) edgeUpdates.targetHandle = updates.targetHandle;
           
+          const updatedNode = { ...node, data: { ...node.data, ...updates } };
+          
+          // Save to database
+          get().saveNode(updatedNode);
+          
           return {
             nodes: state.nodes.map((n) =>
-              n.id === id ? { ...n, data: { ...n.data, ...updates } } : n
+              n.id === id ? updatedNode : n
             ),
             edges: state.edges.map((e) =>
               e.id === edge.id ? { ...e, ...edgeUpdates } : e
@@ -47,9 +136,14 @@ export const useNodesStore = create((set, get) => ({
         }
       }
 
+      const updatedNode = { ...node, data: { ...node.data, ...updates } };
+      
+      // Save to database
+      get().saveNode(updatedNode);
+
       return {
         nodes: state.nodes.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, ...updates } } : n
+          n.id === id ? updatedNode : n
         ),
       };
     }),
@@ -144,6 +238,9 @@ export const useNodesStore = create((set, get) => ({
       });
       return newState;
     });
+
+    // Save to database
+    get().saveNode(newNode);
   },
 
   ideaBuffet: [],
@@ -192,7 +289,7 @@ export const useNodesStore = create((set, get) => ({
           const newParent = parentNode || state.nodes.find(n => n.id === 'root');
           const offset = 160;
           
-          return {
+          const updatedNode = {
             ...node,
             data: {
               ...node.data,
@@ -204,6 +301,11 @@ export const useNodesStore = create((set, get) => ({
               y: newParent ? newParent.position.y + offset : node.position.y,
             }
           };
+
+          // Save updated node to database
+          get().saveNode(updatedNode);
+
+          return updatedNode;
         }
         return node;
       });
@@ -257,6 +359,9 @@ export const useNodesStore = create((set, get) => ({
           targetHandle
         };
       });
+
+      // Delete from database
+      get().deleteNodeFromDB(id);
 
       return {
         nodes: filteredNodes,

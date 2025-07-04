@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button, TextInput, Modal, SelectInput } from 'pres-start-core';
 import { useNodesStore } from '../hooks/useNodesStore';
+import { useAuth } from '../hooks/useAuth';
 
 
 export const TopBar = () => {
@@ -12,6 +13,7 @@ export const TopBar = () => {
   const rootNode = useNodesStore((state) => Array.isArray(state.nodes) ? state.nodes.find((n) => n.id === 'root') : null);
   const updateNode = useNodesStore((state) => state.updateNode);
   const addNode = useNodesStore((state) => state.addNode);
+  const { signOut } = useAuth();
   
 
 
@@ -86,6 +88,15 @@ export const TopBar = () => {
           </div>
         )}
 
+        {/* Sign Out Button */}
+        <Button 
+          variant="secondary" 
+          size="small"
+          onClick={signOut}
+          className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
+        >
+          Sign Out
+        </Button>
 
       </header>
 
