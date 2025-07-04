@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { IconButton, Modal, TextArea, TextInput, Button, Tooltip } from 'pres-start-core';
+import { IconButton, Modal, TextArea, TextInput, Button, Tooltip, SelectInput } from 'pres-start-core';
 import { useReactFlow } from 'reactflow';
-import { generateSingleIdea } from '../utils/openai';
+import { generateSingleIdea, getAvailableProviders } from '../utils/aiProvider';
 import { useNodesStore } from '../hooks/useNodesStore';
 
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -20,7 +20,15 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
   const deleteNode = useNodesStore((state) => state.deleteNode);
   const activeRootId = useNodesStore((state) => state.activeRootId);
   
+  // AI Provider/Model selection from global state
+  const aiProvider = useNodesStore((state) => state.aiProvider);
+  const aiModel = useNodesStore((state) => state.aiModel);
+  const setAIProviderAndModel = useNodesStore((state) => state.setAIProviderAndModel);
 
+  // Get available providers and models
+  const availableProviders = getAvailableProviders();
+  const currentProvider = availableProviders.find(p => p.id === aiProvider);
+  const currentModels = currentProvider?.models || [];
 
   // add node from the node button
   const handleAdd = () => {
@@ -94,6 +102,8 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
         parentNodes,
         currentNode,
         promptType: selectedPromptType,
+        provider: aiProvider,
+        model: aiModel,
       });
 
       if (ideaText && typeof ideaText === 'string') {
@@ -172,8 +182,6 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </IconButton>
         </Tooltip>
 
-
-
         {nodeId !== 'root' && (
           <Tooltip position="bottom" content="Delete Node">
             <IconButton
@@ -189,8 +197,6 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
             </IconButton>
           </Tooltip>
         )}
-
-
       </div>
 
       {/* Add Idea Modal */}
@@ -220,8 +226,6 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
         </div>
       </Modal>
 
-
-
       {/* Generate AI Type Modal */}
       <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
         <div className="space-y-4">
@@ -240,6 +244,48 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
                 <span className="capitalize">{type}</span>
               </label>
             ))}
+          </div>
+          
+          {/* AI Provider/Model Selection */}
+          <div className="space-y-2 pt-4 border-t border-gray-600">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                AI Provider
+              </label>
+              <SelectInput
+                value={aiProvider}
+                onChange={(e) => {
+                  const newProvider = e.target.value;
+                  const providerConfig = availableProviders.find(p => p.id === newProvider);
+                  const defaultModel = providerConfig?.models[0]?.id || 'gpt-4o';
+                  setAIProviderAndModel(newProvider, defaultModel);
+                }}
+                className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+              >
+                {availableProviders.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name}
+                  </option>
+                ))}
+              </SelectInput>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                AI Model
+              </label>
+              <SelectInput
+                value={aiModel}
+                onChange={(e) => setAIProviderAndModel(aiProvider, e.target.value)}
+                className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+              >
+                {currentModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </SelectInput>
+            </div>
           </div>
         </div>
         <div className="flex justify-end mt-4">

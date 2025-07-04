@@ -419,4 +419,11 @@ export const useNodesStore = create((set, get) => ({
     // Pin the new node (which automatically sets it as AI root)
     state.pinNode(nodeId);
   },
+
+  // AI Provider and Model Selection
+  aiProvider: 'openai', // Default to OpenAI
+  aiModel: 'gpt-4o', // Default to GPT-4o
+  setAIProvider: (provider) => set({ aiProvider: provider }),
+  setAIModel: (model) => set({ aiModel: model }),
+  setAIProviderAndModel: (provider, model) => set({ aiProvider: provider, aiModel: model }),
 }));

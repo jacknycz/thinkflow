@@ -1,8 +1,8 @@
 // src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { useNodesStore } from '../hooks/useNodesStore';
-import { generateIdea, generateIdeaBuffet } from '../utils/openai';
-import { Button, TextInput, Tooltip } from 'pres-start-core';
+import { generateIdea, generateIdeaBuffet, getAvailableProviders } from '../utils/aiProvider';
+import { Button, TextInput, Tooltip, SelectInput } from 'pres-start-core';
 import InfoIcon from '@mui/icons-material/Info';
 
 export default function Sidebar() {
@@ -15,6 +15,16 @@ export default function Sidebar() {
   const ideaBuffet = useNodesStore((state) => state.ideaBuffet);
   const nodes = useNodesStore((state) => state.nodes);
   const rootNode = useNodesStore((state) => state.getRootNode());
+  
+  // AI Provider/Model selection from global state
+  const aiProvider = useNodesStore((state) => state.aiProvider);
+  const aiModel = useNodesStore((state) => state.aiModel);
+  const setAIProviderAndModel = useNodesStore((state) => state.setAIProviderAndModel);
+
+  // Get available providers and models
+  const availableProviders = getAvailableProviders();
+  const currentProvider = availableProviders.find(p => p.id === aiProvider);
+  const currentModels = currentProvider?.models || [];
 
   const generateIdeas = async () => {
     const basePrompt = prompt.trim() || rootNode?.data?.label;
@@ -23,7 +33,13 @@ export default function Sidebar() {
     setPrompt('');
     window.dispatchEvent(new CustomEvent('ai-thinking-start'));
     try {
-      const ideas = await generateIdeaBuffet({ userPrompt: basePrompt, rootNode: rootNode?.data?.label || '', numberOfIdeas: 5 });
+      const ideas = await generateIdeaBuffet({ 
+        userPrompt: basePrompt, 
+        rootNode: rootNode?.data?.label || '', 
+        numberOfIdeas: 5,
+        provider: aiProvider,
+        model: aiModel
+      });
       // Map each idea string to an object with title and summary
       const ideaObjects = (ideas || []).map((idea) => ({ title: idea, summary: '' }));
       setIdeaBuffet(ideaObjects);
@@ -55,6 +71,48 @@ export default function Sidebar() {
       <h2 className="text-lg font-bold mb-2 text-gray-100">
         Make some ideas
       </h2>
+
+      {/* AI Provider/Model Selection */}
+      <div className="mb-4 space-y-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            AI Provider
+          </label>
+          <SelectInput
+            value={aiProvider}
+            onChange={(e) => {
+              const newProvider = e.target.value;
+              const providerConfig = availableProviders.find(p => p.id === newProvider);
+              const defaultModel = providerConfig?.models[0]?.id || 'gpt-4o';
+              setAIProviderAndModel(newProvider, defaultModel);
+            }}
+            className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+          >
+            {availableProviders.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </SelectInput>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            AI Model
+          </label>
+          <SelectInput
+            value={aiModel}
+            onChange={(e) => setAIProviderAndModel(aiProvider, e.target.value)}
+            className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+          >
+            {currentModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </SelectInput>
+        </div>
+      </div>
 
       <div className="space-y-2 mb-4">
         {chatLog.map((msg, idx) => (

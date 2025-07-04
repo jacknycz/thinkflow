@@ -10,10 +10,9 @@ import NodeToolbarPin from './NodeToolbarPin';
 import NodeToolbarAdd from './NodeToolbarAdd';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { uploadFile, getFileUrl, storeChunkEmbedding, searchSimilarContent } from '../utils/supabase';
-import { getOpenAIEmbedding, generatePromptWithContext } from '../utils/openai';
+import { getOpenAIEmbedding, generatePromptWithContext, generateSingleIdea } from '../utils/aiProvider';
 
 import { useReactFlow } from 'reactflow';
-import { generateSingleIdea } from '../utils/openai';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -163,11 +162,18 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
         }
       }
       const currentNode = data.label || '';
+      
+      // Get AI provider/model from global state
+      const aiProvider = useNodesStore.getState().aiProvider;
+      const aiModel = useNodesStore.getState().aiModel;
+      
       const ideaText = await generateSingleIdea({
         rootNode,
         parentNodes,
         currentNode,
         promptType: 'idea',
+        provider: aiProvider,
+        model: aiModel,
       });
       if (ideaText && typeof ideaText === 'string') {
         // Robustly split into title and summary
@@ -378,6 +384,10 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
         console.warn('Vector search failed, continuing without context:', error);
       }
 
+      // Get AI provider/model from global state
+      const aiProvider = useNodesStore.getState().aiProvider;
+      const aiModel = useNodesStore.getState().aiModel;
+
       // Generate response with context
       const response = await generatePromptWithContext({
         userPrompt: promptText,
@@ -386,6 +396,8 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
         currentNode,
         vectorResults,
         temperature: 0.7,
+        provider: aiProvider,
+        model: aiModel,
       });
 
       if (response && typeof response === 'string') {
