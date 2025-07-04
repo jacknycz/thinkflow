@@ -34,6 +34,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   const activeRootId = useNodesStore((state) => state.activeRootId);
   const pinNode = useNodesStore(s => s.pinNode);
   const unpinNode = useNodesStore(s => s.unpinNode);
+  const deleteNode = useNodesStore((state) => state.deleteNode);
 
   // Use robust split for title and summary from label
   const { title, summary } = splitTitleSummary(data.label || '');
@@ -540,7 +541,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
           handlePrompt={handlePrompt}
           handleNoteClick={e => { e.stopPropagation(); handleNoteModalOpen(); }}
           handleFileUpload={handleFileUpload}
-          handleDeleteClick={e => { e.stopPropagation(); updateNode(id, { delete: true }); }}
+          handleDeleteClick={e => { e.stopPropagation(); deleteNode(id); }}
           canDelete={id !== 'root'}
         />
       </div>
