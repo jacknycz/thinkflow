@@ -559,7 +559,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
       </div>
 
       {/* Note Modal with TipTap editor and toolbar */}
-      <Modal variant="custom" className="w-full min-w-[400px] max-w-2xl" isOpen={showNoteModal} onClose={() => setShowNoteModal(false)} title="Add/Edit Note">
+      <Modal variant="custom" className="w-full min-w-[400px] max-w-2xl text-thinkFlow-text" isOpen={showNoteModal} onClose={() => setShowNoteModal(false)} title="Add/Edit Note">
         <h3 className="text-lg font-semibold mb-4 text-white truncate max-w-full">
           "{title}" Note
         </h3>
@@ -581,7 +581,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
       </Modal>
 
       {/* Add Idea Modal for Blank Node */}
-      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Idea">
+      <Modal variant="custom" className="w-full min-w-96 max-w-md text-thinkFlow-text" isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Idea">
         <div className="space-y-4">
           <input
             className="w-full border rounded px-3 py-2 text-base"
@@ -608,7 +608,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
       </Modal>
 
       {/* Prompt Modal */}
-      <Modal variant="custom" className="w-full min-w-[500px] max-w-2xl" isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} title="Ask AI with Context">
+      <Modal variant="custom" className="w-full min-w-[500px] max-w-2xl text-thinkFlow-text" isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} title="Ask AI with Context">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-white mb-2">

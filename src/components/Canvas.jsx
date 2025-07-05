@@ -399,10 +399,10 @@ export default function Canvas() {
 
   return (
     <div
-      className="flex-1 h-full relative"
+      className="flex-1 h-full relative bg-thinkFlow-bg"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
-      style={{ backgroundColor: '#1a1a1a' }} // Add your desired color here
+      style={{ backgroundColor: '#101828' }} // Add your desired color here
     >
       {/* Custom background image */}
       {backgroundImage && (
@@ -434,8 +434,8 @@ export default function Canvas() {
       )}
 
       <ReactFlow
-        nodes={nodes.map((node) => ({ ...node, style: getNodeStyle(node) }))}
-        edges={styledEdges}
+        nodes={nodes.map((node) => ({ ...node, style: { ...getNodeStyle(node), background: 'var(--tw-bg-opacity,1) #232B3A', color: '#FFFFFF' } }))}
+        edges={styledEdges.map((edge) => ({ ...edge, style: { ...edge.style, stroke: '#5B8DEF' } }))}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStart={onNodeDragStart}

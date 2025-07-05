@@ -200,7 +200,7 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
       </div>
 
       {/* Add Idea Modal */}
-      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
+      <Modal variant="custom" className="w-full min-w-96 max-w-md text-thinkFlow-text" isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Idea">
         <div className="space-y-4">
           <TextInput
             label="Title"
@@ -217,17 +217,17 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           />
         </div>
         <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={() => setAddModalOpen(false)} className="mr-2">
+          <Button variant="secondary" onClick={() => setAddModalOpen(false)} className="mr-2 glass-morphism">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleConfirmAdd}>
+          <Button variant="primary" onClick={handleConfirmAdd} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent">
             Add Idea
           </Button>
         </div>
       </Modal>
 
       {/* Generate AI Type Modal */}
-      <Modal variant="custom" className="w-full min-w-96 max-w-md" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
+      <Modal variant="custom" className="w-full min-w-96 max-w-md text-thinkFlow-text" isOpen={isGenerateModalOpen} onClose={() => setGenerateModalOpen(false)} title="Generate AI Response">
         <div className="space-y-4">
           <p className="font-semibold">As...</p>
           <div className="flex flex-col space-y-2">
@@ -289,10 +289,10 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </div>
         </div>
         <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2">
+          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2 glass-morphism">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleGenerateAIConfirm}>
+          <Button variant="primary" onClick={handleGenerateAIConfirm} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent">
             Generate
           </Button>
         </div>

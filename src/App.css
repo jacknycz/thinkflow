@@ -1,0 +1,9 @@
+body {
+  @apply bg-thinkFlow-bg text-thinkFlow-text;
+}
+
+#root {
+  @apply bg-thinkFlow-bg text-thinkFlow-text min-h-screen;
+}
+
+/* Remove or override any old background or text color rules below */

@@ -22,10 +22,26 @@ module.exports = {
     900: '#5C0B35',
     950: '#3D001C',
         },
+        // ThinkFlow-inspired theme
+        thinkFlow: {
+          bg: '#101828', // main background
+          panel: '#1A2233', // sidebar/panel
+          card: '#232B3A', // node/card
+          border: '#232B3A', // border/line
+          accent: '#6D5DFB', // primary accent (blue-purple)
+          accent2: '#A66CFA', // secondary accent (purple)
+          text: '#FFFFFF', // main text
+          textSecondary: '#B6C2E2', // secondary text
+          edge: '#5B8DEF', // edge/line
+        },
       },
       animation: {
         'spin-slow': 'spin 3s linear infinite',
       },
+      gradientColorStops: theme => ({
+        ...theme('colors'),
+        'thinkFlow-gradient': 'linear-gradient(90deg, #6D5DFB 0%, #A66CFA 100%)',
+      }),
     },
   },
   plugins: [],

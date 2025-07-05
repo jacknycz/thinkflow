@@ -4,6 +4,10 @@ import AddIcon from '@mui/icons-material/Add';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import ChatIcon from '@mui/icons-material/Chat';
+import CircleIcon from '@mui/icons-material/Circle';
 
 export default function NodeBottomToolbar({
   onAddClick,
@@ -31,17 +35,17 @@ export default function NodeBottomToolbar({
   };
 
   return (
-    <div className="flex w-full h-12 rounded-full border border-white/20 shadow-lg bg-white/5">
+    <div className="flex w-full h-12 rounded-full shadow-lg glass-morphism">
       {/* Add Button with submenu */}
       <div className="relative flex-1 h-full flex items-center justify-center" onMouseEnter={onAddMenuEnter} onMouseLeave={onAddMenuLeave}>
         <button
-            className="w-full h-full flex items-center justify-center transition-colors duration-200 bg-transparent hover:bg-white/20 rounded-l-full text-white"
-            onClick={onAddClick}
-            tabIndex={0}
-            type="button"
-          >
-            <AddIcon fontSize="medium" className="text-white mx-auto" />
-          </button>
+          className="w-full h-full flex items-center justify-center transition-colors duration-200 bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 hover:opacity-90 rounded-l-full text-white glass-morphism-accent"
+          onClick={onAddClick}
+          tabIndex={0}
+          type="button"
+        >
+          <AddIcon fontSize="medium" className="text-white mx-auto" />
+        </button>
         {/* Submenu */}
         <div
           className={`absolute left-1/2 -translate-x-1/2 top-full mt-0 min-w-[180px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
@@ -49,11 +53,21 @@ export default function NodeBottomToolbar({
           }`}
           style={{ paddingTop: 0 }}
         >
-          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-t-lg disabled:opacity-60" onClick={handleGenerateAIThought} disabled={aiLoading}>{aiLoading ? 'Generating...' : '+ AI Thought'}</button>
-          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={handlePrompt}>+ Prompt</button>
-          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Question')}>+ AI Question</button>
-          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Ramble')}>+ AI Ramble</button>
-          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-b-lg" onClick={() => handleAddNode('Blank Node')}>+ Blank Node</button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-t-lg disabled:opacity-60" onClick={handleGenerateAIThought} disabled={aiLoading}>
+            {aiLoading ? '⏳ Generating...' : <><AutoAwesomeIcon fontSize="small" className="mr-2" />AI Thought</>}
+          </button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={handlePrompt}>
+            <ChatIcon fontSize="small" className="mr-2" />Prompt
+          </button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Question')}>
+            <QuestionAnswerIcon fontSize="small" className="mr-2" />AI Question
+          </button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700" onClick={() => handleAddNode('AI Ramble')}>
+            <ChatIcon fontSize="small" className="mr-2" />AI Ramble
+          </button>
+          <button className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-b-lg" onClick={() => handleAddNode('Blank Node')}>
+            <CircleIcon fontSize="small" className="mr-2" />Blank Node
+          </button>
         </div>
       </div>
       {/* Note Button */}

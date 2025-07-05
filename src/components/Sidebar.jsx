@@ -67,8 +67,8 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 p-4 bg-gradient-to-b from-gray-900 to-gray-800 h-full overflow-y-auto shadow-inner shadow-gray-900 border-l border-gray-700">
-      <h2 className="text-lg font-bold mb-2 text-gray-100">
+    <aside className="w-80 p-4 h-full overflow-y-auto shadow-inner border-l text-thinkFlow-textSecondary glass-morphism-dark">
+      <h2 className="text-lg font-bold mb-2 text-thinkFlow-text">
         Make some ideas
       </h2>
 
@@ -79,6 +79,7 @@ export default function Sidebar() {
             AI Provider
           </label>
           <SelectInput
+            variant="custom"
             value={aiProvider}
             onChange={(e) => {
               const newProvider = e.target.value;
@@ -86,7 +87,6 @@ export default function Sidebar() {
               const defaultModel = providerConfig?.models[0]?.id || 'gpt-4o';
               setAIProviderAndModel(newProvider, defaultModel);
             }}
-            className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
           >
             {availableProviders.map((provider) => (
               <option key={provider.id} value={provider.id}>
@@ -101,9 +101,9 @@ export default function Sidebar() {
             AI Model
           </label>
           <SelectInput
+            variant="custom"
             value={aiModel}
             onChange={(e) => setAIProviderAndModel(aiProvider, e.target.value)}
-            className="bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
           >
             {currentModels.map((model) => (
               <option key={model.id} value={model.id}>
@@ -118,10 +118,10 @@ export default function Sidebar() {
         {chatLog.map((msg, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded shadow-sm text-sm ${
+            className={`p-2 rounded shadow-sm text-sm glass-morphism ${
               msg.role === 'user' 
-                ? 'bg-gray-800 text-gray-200 border border-gray-600' 
-                : 'bg-gray-700 text-gray-300 border border-gray-600'
+                ? 'border border-thinkFlow-accent/30' 
+                : 'border border-thinkFlow-border/30'
             }`}
           >
             {msg.content}
@@ -137,17 +137,18 @@ export default function Sidebar() {
         className="flex gap-2 mb-6"
       >
         <TextInput
+          variant="custom"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={
             rootNode?.data?.label ? `Ex: ${rootNode.data.label.slice(0, 30)}...` : 'New idea topic...'
           }
-          className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+          // className="glass-morphism"
         />
         <Button 
-          variant="primary" 
+          variant="custom"
           size="default"
-          className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+          className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
         >
           Ask
         </Button>
@@ -160,14 +161,14 @@ export default function Sidebar() {
         {ideaBuffet.map((idea, idx) => (
           <li
             key={`buffet-${idx}`}
-            className="transition-all cursor-grab duration-300 border border-gray-600 hover:bg-gray-800 p-3 rounded-lg hover:shadow-lg hover:shadow-gray-900 text-sm bg-gray-800/50 backdrop-blur-sm"
+            className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm glass-morphism hover:glass-morphism-accent"
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/json', JSON.stringify(idea));
             }}
           >
-            <p className="font-semibold text-gray-100 mb-1">{idea.title}</p>
-            <p className="text-gray-300 mb-2 text-xs whitespace-pre-line break-words">
+            <p className="font-semibold text-thinkFlow-text mb-1">{idea.title}</p>
+            <p className="text-thinkFlow-textSecondary mb-2 text-xs whitespace-pre-line break-words">
               {idea.summary}
             </p>
             <div className="flex flex-wrap gap-1 justify-end">
@@ -175,10 +176,10 @@ export default function Sidebar() {
                 <Button
                   key={`${node.id}-${idx}`}
                   onClick={() => handleAddIdeaToNode(node.id, idea)}
-                  variant="secondary"
+                  variant="custom"
                   size="small"
                   title={`Add to ${node.data?.label ?? 'Unnamed node'}`}
-                  className="bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600 hover:border-gray-500 text-xs"
+                  className="text-xs glass-morphism"
                 >
                   {truncate(node.data?.label)}
                 </Button>

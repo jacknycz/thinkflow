@@ -1,22 +1,69 @@
 // src/components/TopBar.jsx
-import React, { useState } from 'react';
-import { Button, TextInput, Modal, SelectInput } from 'pres-start-core';
+import React, { useState, useEffect } from 'react';
+import { Button, TextInput, Modal, SelectInput, TextArea } from 'pres-start-core';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { useAuth } from '../hooks/useAuth';
-import FlowManager from './FlowManager';
-
+import { saveFlow, getUserFlows, loadFlow, deleteFlow, getActiveFlow, getFlowVersions, revertToVersion } from '../utils/supabase';
+import Avatar from 'pres-start-core/dist/components/Avatar/Avatar';
+import AddIcon from '@mui/icons-material/Add';
+import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import HistoryIcon from '@mui/icons-material/History';
+import LogoutIcon from '@mui/icons-material/Logout';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 
 export const TopBar = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [newTopic, setNewTopic] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  let avatarMenuTimeout;
+
+  // Flow management state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [flows, setFlows] = useState([]);
+  const [activeFlow, setActiveFlow] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [flowName, setFlowName] = useState('');
+  const [flowDescription, setFlowDescription] = useState('');
+  const [message, setMessage] = useState('');
+  const [versions, setVersions] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
 
   const rootNode = useNodesStore((state) => Array.isArray(state.nodes) ? state.nodes.find((n) => n.id === 'root') : null);
   const updateNode = useNodesStore((state) => state.updateNode);
   const addNode = useNodesStore((state) => state.addNode);
-  const { signOut } = useAuth();
-  
+  const nodes = useNodesStore((state) => state.nodes);
+  const edges = useNodesStore((state) => state.edges);
+  const setNodes = useNodesStore((state) => state.setNodes);
+  const setEdges = useNodesStore((state) => state.setEdges);
+  const { signOut, user } = useAuth();
 
+  // Load flows on component mount
+  useEffect(() => {
+    loadFlows();
+    loadActiveFlow();
+  }, []);
+
+  const loadFlows = async () => {
+    try {
+      const userFlows = await getUserFlows();
+      setFlows(userFlows);
+    } catch (error) {
+      console.error('Error loading flows:', error);
+    }
+  };
+
+  const loadActiveFlow = async () => {
+    try {
+      const active = await getActiveFlow();
+      setActiveFlow(active);
+    } catch (error) {
+      console.error('Error loading active flow:', error);
+    }
+  };
 
   // Initialize input value when root node changes
   React.useEffect(() => {
@@ -69,52 +116,256 @@ export const TopBar = () => {
     setNewTopic('');
   };
 
+  // Handlers for hover menu
+  const handleAvatarMouseEnter = () => {
+    clearTimeout(avatarMenuTimeout);
+    setAvatarMenuOpen(true);
+  };
+  const handleAvatarMouseLeave = () => {
+    avatarMenuTimeout = setTimeout(() => setAvatarMenuOpen(false), 120);
+  };
 
+  // Flow management handlers
+  const handleSaveFlow = async () => {
+    if (!flowName.trim()) {
+      setMessage('Please enter a flow name');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const flowData = {
+        nodes,
+        edges,
+        timestamp: Date.now()
+      };
+
+      // Pass the existing flow ID if we have an active flow
+      const existingFlowId = activeFlow?.id || null;
+      const savedFlow = await saveFlow(flowName.trim(), flowDescription.trim(), flowData, existingFlowId);
+      setActiveFlow(savedFlow);
+      await loadFlows();
+      setShowSaveModal(false);
+      setFlowName('');
+      setFlowDescription('');
+      setMessage(existingFlowId ? 'Flow updated successfully!' : 'Flow saved successfully!');
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('Error saving flow: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenSaveModal = () => {
+    // Get root node title to pre-populate flow name
+    const rootNode = nodes.find(n => n.id === 'root');
+    const rootTitle = rootNode?.data?.label || '';
+    
+    // Set the flow name to the root node title if it exists
+    setFlowName(rootTitle);
+    setFlowDescription('');
+    setShowSaveModal(true);
+  };
+
+  const handleLoadFlow = async (flowId) => {
+    setLoading(true);
+    try {
+      const flow = await loadFlow(flowId);
+      if (flow && flow.flow_data) {
+        // Clear current flow and load new one
+        setNodes(flow.flow_data.nodes || []);
+        setEdges(flow.flow_data.edges || []);
+        setActiveFlow(flow);
+        setShowLoadModal(false);
+        setMessage(`Loaded flow: ${flow.name}`);
+        
+        // Clear message after 3 seconds
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      setMessage('Error loading flow: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFlow = async (flowId, flowName) => {
+    if (!confirm(`Are you sure you want to delete "${flowName}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteFlow(flowId);
+      await loadFlows();
+      if (activeFlow && activeFlow.id === flowId) {
+        setActiveFlow(null);
+      }
+      setMessage('Flow deleted successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('Error deleting flow: ' + error.message);
+    }
+  };
+
+  const handleNewFlow = () => {
+    if (nodes.length > 0 || edges.length > 0) {
+      if (!confirm('This will clear your current flow. Are you sure you want to start a new flow?')) {
+        return;
+      }
+    }
+    
+    // Clear current flow
+    setNodes([]);
+    setEdges([]);
+    setActiveFlow(null);
+    setMessage('Started new flow');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString() + ' ' + 
+           new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleOpenVersionModal = async () => {
+    if (!activeFlow) {
+      setMessage('No active flow to show versions for');
+      return;
+    }
+
+    setLoadingVersions(true);
+    try {
+      const flowVersions = await getFlowVersions(activeFlow.id);
+      setVersions(flowVersions);
+      setShowVersionModal(true);
+    } catch (error) {
+      setMessage('Error loading versions: ' + error.message);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const handleRevertToVersion = async (versionNumber) => {
+    if (!confirm(`Are you sure you want to revert to version ${versionNumber}? This will replace your current flow.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const revertedFlow = await revertToVersion(activeFlow.id, versionNumber);
+      
+      // Update the current flow with the reverted data
+      if (revertedFlow && revertedFlow.flow_data) {
+        setNodes(revertedFlow.flow_data.nodes || []);
+        setEdges(revertedFlow.flow_data.edges || []);
+        setActiveFlow(revertedFlow);
+        setShowVersionModal(false);
+        setMessage(`Reverted to version ${versionNumber}`);
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      setMessage('Error reverting to version: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
-      <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700 shadow-lg p-4 flex justify-between items-center gap-4 top-0 left-0 right-0 z-10">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+      <header className="border-b shadow-lg p-4 flex justify-between items-center gap-4 top-0 left-0 right-0 z-10 glass-morphism-dark">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 bg-clip-text text-transparent">
           🧠💦 ThinkFlow
         </h1>
         
         {!rootNode ? (
           <div className="flex-1 max-w-md mx-4">
             <TextInput
+              variant="custom"
               type="text"
               value={inputValue}
               onChange={handleInputChange}
               onKeyPress={handleInputKeyPress}
               placeholder="Get started with your idea..."
-              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         ) : (
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-100">{rootNode.data.label}</h2>
             <Button 
-              variant="secondary" 
+              variant="custom"
               size="small"
               onClick={handleUpdateClick}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600 hover:border-gray-500"
+              className="glass-morphism"
             >
               Update topic
             </Button>
           </div>
         )}
 
-        {/* Flow Management */}
-        <FlowManager />
-
-        {/* Sign Out Button */}
-        <Button 
-          variant="secondary" 
-          size="small"
-          onClick={signOut}
-          className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
-        >
-          Sign Out
-        </Button>
+        {/* Avatar with custom hover menu */}
+        {user && (
+          <div
+            className="relative ml-2"
+            onMouseEnter={handleAvatarMouseEnter}
+            onMouseLeave={handleAvatarMouseLeave}
+          >
+            <Avatar
+              src={user?.user_metadata?.avatar_url}
+              alt={user?.user_metadata?.full_name || 'User'}
+              size="default"
+              className="border border-thinkFlow-border cursor-pointer glass-morphism"
+            />
+            <div
+              className={`absolute right-0 top-full mt-0 min-w-[200px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
+                avatarMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+              }`}
+              style={{ paddingTop: 0 }}
+            >
+              <button
+                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-t-lg disabled:opacity-60"
+                onClick={handleNewFlow}
+              >
+                <AddIcon fontSize="small" className="mr-2" />New Flow
+              </button>
+              <button
+                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
+                onClick={handleOpenSaveModal}
+              >
+                <SaveIcon fontSize="small" className="mr-2" />Save Flow
+              </button>
+              <button
+                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
+                onClick={() => setShowLoadModal(true)}
+              >
+                <FolderOpenIcon fontSize="small" className="mr-2" />Load Flow
+              </button>
+              {activeFlow && (
+                <button
+                  className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
+                  onClick={handleOpenVersionModal}
+                  disabled={loadingVersions}
+                >
+                  {loadingVersions ? (
+                    <><HourglassEmptyIcon fontSize="small" className="mr-2" />Loading...</>
+                  ) : (
+                    <><HistoryIcon fontSize="small" className="mr-2" />Versions</>
+                  )}
+                </button>
+              )}
+              <button
+                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-b-lg disabled:opacity-60"
+                onClick={signOut}
+              >
+                <LogoutIcon fontSize="small" className="mr-2" />Sign Out
+              </button>
+            </div>
+          </div>
+        )}
 
       </header>
 
@@ -131,6 +382,7 @@ export const TopBar = () => {
             Update your main topic:
           </p>
           <TextInput
+            variant="custom"
             type="text"
             value={newTopic}
             onChange={(e) => setNewTopic(e.target.value)}
@@ -140,27 +392,193 @@ export const TopBar = () => {
                 handleUpdateConfirm();
               }
             }}
-            className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div className="flex justify-end mt-4 gap-2">
           <Button 
-            variant="secondary" 
+            variant="custom"
             onClick={handleUpdateCancel}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600 hover:border-gray-500"
+            className="glass-morphism"
           >
             Cancel
           </Button>
           <Button 
-            variant="primary" 
+            variant="custom"
             onClick={handleUpdateConfirm}
             disabled={!newTopic.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
           >
             Update Topic
           </Button>
         </div>
       </Modal>
+
+      {/* Save Flow Modal */}
+      <Modal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        variant="custom"
+        title="Save Flow"
+        className="max-w-md"
+      >
+        <div className="space-y-4">
+          <TextInput
+            variant="custom"
+            type="text"
+            placeholder="Flow name"
+            value={flowName}
+            onChange={(e) => setFlowName(e.target.value)}
+            className="w-full"
+          />
+          <TextArea
+            placeholder="Optional description"
+            value={flowDescription}
+            onChange={(e) => setFlowDescription(e.target.value)}
+            rows={3}
+            className="w-full"
+          />
+          <div className="text-xs text-gray-400">
+            This will save {nodes.length} nodes and {edges.length} connections
+          </div>
+        </div>
+        <div className="flex justify-end mt-4 gap-2">
+          <Button
+            variant="custom"
+            onClick={() => setShowSaveModal(false)}
+            className="glass-morphism"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="custom"
+            onClick={handleSaveFlow}
+            disabled={loading || !flowName.trim()}
+            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
+          >
+            {loading ? 'Saving...' : 'Save Flow'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Load Flow Modal */}
+      <Modal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        variant="custom"
+        title="Load Flow"
+        className="max-w-lg"
+      >
+        <div className="space-y-4">
+          {flows.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              No saved flows found. Save your first flow to get started!
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {flows.map((flow) => (
+                <div
+                  key={flow.id}
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors glass-morphism ${
+                    activeFlow?.id === flow.id
+                      ? 'border-thinkFlow-accent'
+                      : 'border-thinkFlow-border/30'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1" onClick={() => handleLoadFlow(flow.id)}>
+                      <div className="font-semibold text-thinkFlow-text">{flow.name}</div>
+                      {flow.description && (
+                        <div className="text-sm text-thinkFlow-textSecondary mt-1">{flow.description}</div>
+                      )}
+                      <div className="text-xs text-thinkFlow-textSecondary mt-1">
+                        {flow.flow_data?.nodes?.length || 0} nodes • 
+                        {flow.flow_data?.edges?.length || 0} connections • 
+                        {formatDate(flow.updated_at)}
+                      </div>
+                    </div>
+                    <Button
+                      variant="custom"
+                      size="small"
+                      onClick={() => handleDeleteFlow(flow.id, flow.name)}
+                      className="ml-2 glass-morphism"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button
+            variant="custom"
+            onClick={() => setShowLoadModal(false)}
+            className="glass-morphism"
+          >
+            Close
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Version History Modal */}
+      <Modal
+        isOpen={showVersionModal}
+        onClose={() => setShowVersionModal(false)}
+        variant="custom"
+        title={`Version History - ${activeFlow?.name}`}
+        className="max-w-lg"
+      >
+        <div className="space-y-4">
+          {versions.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              No version history found for this flow.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {versions.map((version) => (
+                <div
+                  key={version.id}
+                  className="p-3 border border-thinkFlow-border/30 rounded-lg transition-colors glass-morphism"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-semibold text-thinkFlow-text">
+                        Version {version.version_number}
+                      </div>
+                      <div className="text-xs text-thinkFlow-textSecondary mt-1">
+                        {formatDate(version.created_at)}
+                      </div>
+                      <div className="text-xs text-thinkFlow-textSecondary mt-1">
+                        {version.flow_data?.nodes?.length || 0} nodes • 
+                        {version.flow_data?.edges?.length || 0} connections
+                      </div>
+                    </div>
+                    <Button
+                      variant="custom"
+                      size="small"
+                      onClick={() => handleRevertToVersion(version.version_number)}
+                      className="ml-2 glass-morphism"
+                      disabled={loading}
+                    >
+                      {loading ? 'Reverting...' : 'Revert'}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button
+            variant="custom"
+            onClick={() => setShowVersionModal(false)}
+            className="glass-morphism"
+          >
+            Close
+          </Button>
+        </div>
+      </Modal>
     </>
   );
-};
+}
