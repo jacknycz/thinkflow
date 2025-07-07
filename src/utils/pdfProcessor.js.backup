@@ -1,0 +1,231 @@
+// PDF Processing Utilities
+// Using dynamic import for better Vite compatibility
+let pdfjsLib = null;
+
+// Initialize PDF.js
+async function initPDFJS() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    
+    // Disable worker to avoid CDN issues - use main thread processing
+    pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+  }
+  return pdfjsLib;
+}
+
+export class PDFProcessor {
+  static async extractTextFromPDF(file) {
+    try {
+      const pdfjs = await initPDFJS();
+      
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Load PDF document
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      let fullText = '';
+      const pageTexts = [];
+      
+      // Extract text from each page
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Combine text items with proper spacing
+        const pageText = textContent.items
+          .map(item => item.str)
+          .join(' ');
+        
+        pageTexts.push({
+          pageNumber: pageNum,
+          text: pageText,
+          wordCount: pageText.split(/\s+/).length
+        });
+        
+        fullText += pageText + '\n\n';
+      }
+      
+      return {
+        success: true,
+        text: fullText.trim(),
+        pages: pageTexts,
+        totalPages: pdf.numPages,
+        totalWords: fullText.split(/\s+/).length,
+        metadata: {
+          title: pdf.info?.Title || file.name,
+          author: pdf.info?.Author || 'Unknown',
+          subject: pdf.info?.Subject || '',
+          creator: pdf.info?.Creator || '',
+          producer: pdf.info?.Producer || '',
+          creationDate: pdf.info?.CreationDate || '',
+          modificationDate: pdf.info?.ModDate || ''
+        }
+      };
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      return {
+        success: false,
+        error: error.message,
+        text: '',
+        pages: [],
+        totalPages: 0,
+        totalWords: 0,
+        metadata: {}
+      };
+    }
+  }
+
+  static async extractTextWithLayout(file) {
+    try {
+      const pdfjs = await initPDFJS();
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      const pages = [];
+      
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Extract text with positioning information
+        const textItems = textContent.items.map(item => ({
+          text: item.str,
+          x: item.transform[4],
+          y: item.transform[5],
+          width: item.width,
+          height: item.height,
+          fontSize: Math.sqrt(item.transform[0] * item.transform[0] + item.transform[1] * item.transform[1])
+        }));
+        
+        // Group text by lines (similar Y positions)
+        const lines = this.groupTextByLines(textItems);
+        
+        pages.push({
+          pageNumber: pageNum,
+          lines,
+          rawText: textItems.map(item => item.text).join(' '),
+          wordCount: textItems.reduce((count, item) => count + item.text.split(/\s+/).length, 0)
+        });
+      }
+      
+      return {
+        success: true,
+        pages,
+        totalPages: pdf.numPages,
+        totalWords: pages.reduce((sum, page) => sum + page.wordCount, 0)
+      };
+    } catch (error) {
+      console.error('PDF layout processing error:', error);
+      return {
+        success: false,
+        error: error.message,
+        pages: [],
+        totalPages: 0,
+        totalWords: 0
+      };
+    }
+  }
+
+  static groupTextByLines(textItems, tolerance = 5) {
+    const lines = [];
+    
+    textItems.forEach(item => {
+      const y = Math.round(item.y / tolerance) * tolerance;
+      let line = lines.find(l => Math.abs(l.y - y) < tolerance);
+      
+      if (!line) {
+        line = { y, items: [] };
+        lines.push(line);
+      }
+      
+      line.items.push(item);
+    });
+    
+    // Sort items within each line by x position
+    lines.forEach(line => {
+      line.items.sort((a, b) => a.x - b.x);
+    });
+    
+    // Sort lines by y position (top to bottom)
+    lines.sort((a, b) => b.y - a.y);
+    
+    return lines;
+  }
+
+  static chunkTextBySections(text, maxChunkSize = 1000) {
+    const chunks = [];
+    const paragraphs = text.split(/\n\s*\n/);
+    
+    let currentChunk = '';
+    
+    for (const paragraph of paragraphs) {
+      const trimmedParagraph = paragraph.trim();
+      if (!trimmedParagraph) continue;
+      
+      // If adding this paragraph would exceed chunk size, start a new chunk
+      if (currentChunk.length + trimmedParagraph.length > maxChunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = trimmedParagraph;
+      } else {
+        currentChunk += (currentChunk ? '\n\n' : '') + trimmedParagraph;
+      }
+    }
+    
+    // Add the last chunk if it has content
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks;
+  }
+
+  static async getPDFPreview(file, pageNumber = 1) {
+    try {
+      const pdfjs = await initPDFJS();
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      if (pageNumber > pdf.numPages) {
+        pageNumber = 1;
+      }
+      
+      const page = await pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 1.0 });
+      
+      // Create canvas for rendering
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      // Render PDF page to canvas
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      
+      return {
+        success: true,
+        canvas,
+        pageNumber,
+        totalPages: pdf.numPages,
+        width: viewport.width,
+        height: viewport.height
+      };
+    } catch (error) {
+      console.error('PDF preview error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+} 

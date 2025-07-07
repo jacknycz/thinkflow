@@ -11,6 +11,7 @@ import NodeToolbarAdd from './NodeToolbarAdd';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { uploadFile, getFileUrl, storeChunkEmbedding, searchSimilarContent } from '../utils/supabase';
 import { getOpenAIEmbedding, generatePromptWithContext, generateSingleIdea } from '../utils/aiProvider';
+import { PDFProcessor } from '../utils/pdfProcessor';
 
 import { useReactFlow } from 'reactflow';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -19,6 +20,7 @@ import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import SimpleEditorToolbar from './SimpleEditorToolbar';
 import NodeBottomToolbar from './NodeBottomToolbar';
+import FilePreview from './FilePreview';
 
 export default function CustomNode({ id, data, addNode, updateNode = () => { }, nodes }) {
   const [hovered, setHovered] = useState(false);
@@ -264,62 +266,87 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
     setShowAddModal(false);
   };
 
-  // File upload handler
+  // Updated file upload handler with PDF support
   const handleFileUpload = async (files) => {
     for (const file of files) {
-      if (file.size > 500 * 1024) {
-        alert(`File ${file.name} is too large (max 500KB)`);
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit for PDFs
+        alert(`File ${file.name} is too large (max 10MB)`);
         continue;
       }
-      // Helper to chunk file content
-      function chunkFileContent(text, type) {
-        if (type === 'md' || file.name.endsWith('.md')) {
-          // Split by headings or double newlines
-          return text.split(/\n(?=#|##|###|####|#####|######|\n\n)/g).map(s => s.trim()).filter(Boolean);
-        } else if (type === 'txt' || file.name.endsWith('.txt')) {
-          // Split by double newlines or every ~500 chars
-          let paras = text.split(/\n\n+/g).map(s => s.trim()).filter(Boolean);
-          if (paras.length < 2 && text.length > 600) {
-            // fallback: chunk by 500 chars
-            paras = text.match(/.{1,500}/gs) || [];
-          }
-          return paras;
-        } else if (type === 'json' || file.name.endsWith('.json')) {
-          return [text]; // treat as one chunk for now
-        } else if (type === 'csv' || file.name.endsWith('.csv')) {
-          return [text]; // treat as one chunk for now
-        }
-        return [text];
-      }
+
       try {
-        // 1. Read file as text
-        const text = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsText(file);
-        });
-        // 2. Chunk the file
-        const ext = file.name.split('.').pop().toLowerCase();
-        const chunks = chunkFileContent(text, ext);
-        // 3. Upload file to Supabase
-        const fileData = await uploadFile(file, id);
-        // 4. Store metadata and chunks in node data
-        const existingFiles = data.files || [];
-        const existingChunks = data.fileChunks || [];
-        updateNode(id, {
-          files: [...existingFiles, fileData],
-          fileChunks: [...existingChunks, ...chunks.map((content, i) => ({
+        let fileData, chunks, fileType;
+
+        // Handle PDF files
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          fileType = 'pdf';
+          
+          // Extract text from PDF
+          const pdfResult = await PDFProcessor.extractTextFromPDF(file);
+          
+          if (!pdfResult.success) {
+            alert(`Failed to process PDF ${file.name}: ${pdfResult.error}`);
+            continue;
+          }
+
+          // Upload PDF file to Supabase
+          fileData = await uploadFile(file, id);
+          
+          // Add PDF metadata
+          fileData.pdfMetadata = pdfResult.metadata;
+          fileData.totalPages = pdfResult.totalPages;
+          fileData.totalWords = pdfResult.totalWords;
+          
+          // Chunk the extracted text
+          chunks = PDFProcessor.chunkTextBySections(pdfResult.text).map((content, i) => ({
             fileName: file.name,
-            fileType: file.type,
+            fileType: 'pdf',
             fileIndex: i,
             content,
             uploadedAt: Date.now(),
-          }))],
+            pageInfo: `Extracted from PDF (${pdfResult.totalPages} pages)`
+          }));
+
+        } else {
+          // Handle existing text file types
+          fileType = file.name.split('.').pop().toLowerCase();
+          
+          // Read file as text
+          const text = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+
+          // Chunk the file
+          chunks = chunkFileContent(text, fileType);
+          
+          // Upload file to Supabase
+          fileData = await uploadFile(file, id);
+          
+          // Map chunks to our format
+          chunks = chunks.map((content, i) => ({
+            fileName: file.name,
+            fileType: fileType,
+            fileIndex: i,
+            content,
+            uploadedAt: Date.now(),
+          }));
+        }
+
+        // Store metadata and chunks in node data
+        const existingFiles = data.files || [];
+        const existingChunks = data.fileChunks || [];
+        
+        updateNode(id, {
+          files: [...existingFiles, fileData],
+          fileChunks: [...existingChunks, ...chunks],
         });
-        // 5. Embed and store each chunk in Supabase
+
+        // Embed and store each chunk in Supabase
         for (let i = 0; i < chunks.length; i++) {
-          const content = chunks[i];
+          const content = chunks[i].content;
           try {
             const embedding = await getOpenAIEmbedding(content);
             await storeChunkEmbedding({
@@ -333,6 +360,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
             console.error('Embedding error for chunk', i, embedErr);
           }
         }
+
       } catch (error) {
         alert('Upload failed: ' + error.message);
       }
@@ -345,6 +373,29 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
   };
 
   const [showFilesMenu, setShowFilesMenu] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [showFilePreview, setShowFilePreview] = useState(false);
+
+  // Helper function to chunk file content
+  function chunkFileContent(text, type) {
+    if (type === 'md' || text.includes('#')) {
+      // Split by headings or double newlines
+      return text.split(/\n(?=#|##|###|####|#####|######|\n\n)/g).map(s => s.trim()).filter(Boolean);
+    } else if (type === 'txt') {
+      // Split by double newlines or every ~500 chars
+      let paras = text.split(/\n\n+/g).map(s => s.trim()).filter(Boolean);
+      if (paras.length < 2 && text.length > 600) {
+        // fallback: chunk by 500 chars
+        paras = text.match(/.{1,500}/gs) || [];
+      }
+      return paras;
+    } else if (type === 'json') {
+      return [text]; // treat as one chunk for now
+    } else if (type === 'csv') {
+      return [text]; // treat as one chunk for now
+    }
+    return [text];
+  }
 
   // Helper for Prompt with vector search
   const handlePrompt = async () => {
@@ -443,6 +494,56 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
     }
   };
 
+  // Update the files submenu to include preview functionality
+  const renderFilesMenu = () => (
+    <div
+      className={`absolute left-1/2 -translate-x-1/2 top-full mt-0 min-w-[200px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
+        showFilesMenu ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+      }`}
+      style={{ paddingTop: 0 }}
+      onMouseEnter={() => setShowFilesMenu(true)}
+      onMouseLeave={() => setShowFilesMenu(false)}
+    >
+      {data.files.map((file, idx) => (
+        <div
+          key={file.supabasePath || file.name + idx}
+          className={`block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 cursor-pointer ${
+            idx === 0 ? 'rounded-t-lg' : ''
+          } ${idx === data.files.length - 1 ? 'rounded-b-lg' : ''}`}
+          style={{ color: data.nodeColor }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="truncate flex-1">{file.name}</span>
+            <div className="flex items-center gap-1 ml-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewFile(file);
+                  setShowFilePreview(true);
+                  setShowFilesMenu(false);
+                }}
+                className="text-xs opacity-70 hover:opacity-100 transition-opacity"
+                title="Preview"
+              >
+                👁️
+              </button>
+              <a
+                href={file.publicUrl || getFileUrl(file.supabasePath)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs opacity-70 hover:opacity-100 transition-opacity"
+                title="Open"
+                onClick={(e) => e.stopPropagation()}
+              >
+                ↗️
+              </a>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div
       className={`relative p-5 border rounded-3xl shadow-xl max-w-lg min-w-[340px] transition-all duration-300 glassy-node ${shouldBlur ? 'node-blur' : isFocus ? 'node-focus' : ''}`}
@@ -501,28 +602,7 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
               <AttachFileIcon fontSize="small" />
               <span>{data.files.length}</span>
             </div>
-            {/* Files submenu */}
-            <div
-              className={`absolute left-1/2 -translate-x-1/2 top-full mt-0 min-w-[180px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
-                showFilesMenu ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-              }`}
-              style={{ paddingTop: 0 }}
-              onMouseEnter={() => setShowFilesMenu(true)}
-              onMouseLeave={() => setShowFilesMenu(false)}
-            >
-              {data.files.map((file, idx) => (
-                <a
-                  key={file.supabasePath || file.name + idx}
-                  href={file.publicUrl || getFileUrl(file.supabasePath)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 ${idx === 0 ? 'rounded-t-lg' : ''} ${idx === data.files.length - 1 ? 'rounded-b-lg' : ''}`}
-                  style={{ color: data.nodeColor }}
-                >
-                  {file.name}
-                </a>
-              ))}
-            </div>
+            {renderFilesMenu()}
           </div>
         )}
       </div>
@@ -639,6 +719,17 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
           </Button>
         </div>
       </Modal>
+
+      {/* File Preview Modal */}
+      <FilePreview
+        file={previewFile}
+        isOpen={showFilePreview}
+        onClose={() => {
+          setShowFilePreview(false);
+          setPreviewFile(null);
+        }}
+        nodeColor={data.nodeColor}
+      />
     </div>
   );
 }

@@ -277,10 +277,16 @@ export const TopBar = () => {
 
   return (
     <>
-      <header className="border-b shadow-lg p-4 flex justify-between items-center gap-4 top-0 left-0 right-0 z-10 glass-morphism-dark">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 bg-clip-text text-transparent">
-          🧠💦 ThinkFlow
-        </h1>
+      <header className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center gap-4 z-50">
+        <div className="flex items-center">
+          <div className="px-4 py-2 rounded-full bg-white/25 border border-white/30 backdrop-blur-md shadow-lg">
+            <img 
+              src="/nodal-logo.svg" 
+              alt="Nodal" 
+              className="h-8 w-auto"
+            />
+          </div>
+        </div>
         
         {!rootNode ? (
           <div className="flex-1 max-w-md mx-4">

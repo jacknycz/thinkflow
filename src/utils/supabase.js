@@ -47,8 +47,7 @@ export async function storeChunkEmbedding({ nodeId, fileName, chunkIndex, conten
         file_name: fileName, 
         chunk_index: chunkIndex, 
         content, 
-        embedding,
-        user_id: user.id 
+        embedding
       }]);
     if (error) throw error;
   } catch (error) {
@@ -67,20 +66,18 @@ export async function searchSimilarContent(queryEmbedding, limit = 5) {
     const { data, error } = await supabase.rpc('match_embeddings', {
       query_embedding: queryEmbedding,
       match_threshold: 0.7,
-      match_count: limit,
-      user_id: user.id
+      match_count: limit
     });
     
     if (!error) {
       return data || [];
     }
     
-    // Fallback: use direct SQL query with user filter
+    // Fallback: use direct SQL query without user filter
     console.log('RPC function not found, trying direct SQL query...');
     const { data: sqlData, error: sqlError } = await supabase
       .from('node_file_embeddings')
       .select('id, node_id, file_name, chunk_index, content')
-      .eq('user_id', user.id)
       .order(`embedding <-> '[${queryEmbedding.join(',')}]'::vector`)
       .limit(limit);
     
@@ -90,7 +87,6 @@ export async function searchSimilarContent(queryEmbedding, limit = 5) {
       const { data: recentData, error: recentError } = await supabase
         .from('node_file_embeddings')
         .select('id, node_id, file_name, chunk_index, content')
-        .eq('user_id', user.id)
         .order('id', { ascending: false })
         .limit(limit);
       

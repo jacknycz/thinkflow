@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { TopBar } from './TopBar';
 import Canvas from './Canvas';
-import Sidebar from './Sidebar';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNodesStore } from '../hooks/useNodesStore';
 import { getActiveFlow } from '../utils/supabase';
@@ -54,7 +53,6 @@ export function AppLayout() {
       
       <div className="flex flex-1 overflow-hidden">
         <Canvas />
-        <Sidebar />
       </div>
     </div>
   );

@@ -93,7 +93,7 @@ export default function NodeBottomToolbar({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.json,.csv"
+            accept=".txt,.md,.json,.csv,.pdf"
             multiple
             onChange={handleFileInputChange}
             className="hidden"
