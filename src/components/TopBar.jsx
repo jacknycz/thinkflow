@@ -5,12 +5,14 @@ import { useNodesStore } from '../hooks/useNodesStore';
 import { useAuth } from '../hooks/useAuth';
 import { saveFlow, getUserFlows, loadFlow, deleteFlow, getActiveFlow, getFlowVersions, revertToVersion } from '../utils/supabase';
 import Avatar from 'pres-start-core/dist/components/Avatar/Avatar';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import HistoryIcon from '@mui/icons-material/History';
-import LogoutIcon from '@mui/icons-material/Logout';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { NewFlowButton } from './NewFlowButton';
+import { SaveFlowButton } from './SaveFlowButton';
+import { LoadFlowButton } from './LoadFlowButton';
+import { VersionsButton } from './VersionsButton';
+import { SignOutButton } from './SignOutButton';
+import { ChatbotIconButton } from './ChatbotIconButton';
+import { AIProviderIconButton } from './AIProviderIconButton';
+import { IdeaBuffetIconButton } from './IdeaBuffetIconButton';
 
 export const TopBar = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -199,45 +201,36 @@ export const TopBar = () => {
       return;
     }
 
+    setLoading(true);
     try {
       await deleteFlow(flowId);
       await loadFlows();
-      if (activeFlow && activeFlow.id === flowId) {
+      if (activeFlow?.id === flowId) {
         setActiveFlow(null);
       }
-      setMessage('Flow deleted successfully!');
+      setMessage(`Deleted flow: ${flowName}`);
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       setMessage('Error deleting flow: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleNewFlow = () => {
-    if (nodes.length > 0 || edges.length > 0) {
-      if (!confirm('This will clear your current flow. Are you sure you want to start a new flow?')) {
-        return;
-      }
-    }
-    
-    // Clear current flow
     setNodes([]);
     setEdges([]);
     setActiveFlow(null);
+    setAvatarMenuOpen(false);
     setMessage('Started new flow');
     setTimeout(() => setMessage(''), 3000);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString() + ' ' + 
-           new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateString).toLocaleDateString();
   };
 
   const handleOpenVersionModal = async () => {
-    if (!activeFlow) {
-      setMessage('No active flow to show versions for');
-      return;
-    }
-
     setLoadingVersions(true);
     try {
       const flowVersions = await getFlowVersions(activeFlow.id);
@@ -251,19 +244,12 @@ export const TopBar = () => {
   };
 
   const handleRevertToVersion = async (versionNumber) => {
-    if (!confirm(`Are you sure you want to revert to version ${versionNumber}? This will replace your current flow.`)) {
-      return;
-    }
-
     setLoading(true);
     try {
       const revertedFlow = await revertToVersion(activeFlow.id, versionNumber);
-      
-      // Update the current flow with the reverted data
       if (revertedFlow && revertedFlow.flow_data) {
         setNodes(revertedFlow.flow_data.nodes || []);
         setEdges(revertedFlow.flow_data.edges || []);
-        setActiveFlow(revertedFlow);
         setShowVersionModal(false);
         setMessage(`Reverted to version ${versionNumber}`);
         setTimeout(() => setMessage(''), 3000);
@@ -313,62 +299,46 @@ export const TopBar = () => {
           </div>
         )}
 
-        {/* Avatar with custom hover menu */}
+        {/* Right side: AI Tools + Avatar */}
         {user && (
-          <div
-            className="relative ml-2"
-            onMouseEnter={handleAvatarMouseEnter}
-            onMouseLeave={handleAvatarMouseLeave}
-          >
-            <Avatar
-              src={user?.user_metadata?.avatar_url}
-              alt={user?.user_metadata?.full_name || 'User'}
-              size="default"
-              className="border border-thinkFlow-border cursor-pointer glass-morphism"
-            />
+          <div className="flex items-center gap-3">
+            {/* AI Tool Icon Buttons */}
+            <div className="flex items-center gap-2">
+              <ChatbotIconButton />
+              <AIProviderIconButton />
+              <IdeaBuffetIconButton />
+            </div>
+
+            {/* Avatar with custom hover menu */}
             <div
-              className={`absolute right-0 top-full mt-0 min-w-[200px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
-                avatarMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-              }`}
-              style={{ paddingTop: 0 }}
+              className="relative"
+              onMouseEnter={handleAvatarMouseEnter}
+              onMouseLeave={handleAvatarMouseLeave}
             >
-              <button
-                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-t-lg disabled:opacity-60"
-                onClick={handleNewFlow}
+              <Avatar
+                src={user?.user_metadata?.avatar_url}
+                alt={user?.user_metadata?.full_name || 'User'}
+                size="default"
+                className="border border-thinkFlow-border cursor-pointer glass-morphism"
+              />
+              <div
+                className={`absolute right-0 top-full mt-0 min-w-[200px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
+                  avatarMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+                }`}
+                style={{ paddingTop: 0 }}
               >
-                <AddIcon fontSize="small" className="mr-2" />New Flow
-              </button>
-              <button
-                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
-                onClick={handleOpenSaveModal}
-              >
-                <SaveIcon fontSize="small" className="mr-2" />Save Flow
-              </button>
-              <button
-                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
-                onClick={() => setShowLoadModal(true)}
-              >
-                <FolderOpenIcon fontSize="small" className="mr-2" />Load Flow
-              </button>
-              {activeFlow && (
-                <button
-                  className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 disabled:opacity-60"
-                  onClick={handleOpenVersionModal}
-                  disabled={loadingVersions}
-                >
-                  {loadingVersions ? (
-                    <><HourglassEmptyIcon fontSize="small" className="mr-2" />Loading...</>
-                  ) : (
-                    <><HistoryIcon fontSize="small" className="mr-2" />Versions</>
-                  )}
-                </button>
-              )}
-              <button
-                className="block w-full text-left px-4 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-b-lg disabled:opacity-60"
-                onClick={signOut}
-              >
-                <LogoutIcon fontSize="small" className="mr-2" />Sign Out
-              </button>
+                <NewFlowButton onClick={handleNewFlow} />
+                <SaveFlowButton onClick={handleOpenSaveModal} />
+                <LoadFlowButton onClick={() => setShowLoadModal(true)} />
+                {activeFlow && (
+                  <VersionsButton 
+                    onClick={handleOpenVersionModal}
+                    disabled={loadingVersions}
+                    loading={loadingVersions}
+                  />
+                )}
+                <SignOutButton onClick={signOut} />
+              </div>
             </div>
           </div>
         )}
@@ -532,7 +502,7 @@ export const TopBar = () => {
         isOpen={showVersionModal}
         onClose={() => setShowVersionModal(false)}
         variant="custom"
-        title={`Version History - ${activeFlow?.name}`}
+        title="Version History"
         className="max-w-lg"
       >
         <div className="space-y-4">
@@ -544,28 +514,22 @@ export const TopBar = () => {
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {versions.map((version) => (
                 <div
-                  key={version.id}
-                  className="p-3 border border-thinkFlow-border/30 rounded-lg transition-colors glass-morphism"
+                  key={version.version_number}
+                  className="p-3 border rounded-lg transition-colors glass-morphism border-thinkFlow-border/30"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="font-semibold text-thinkFlow-text">
-                        Version {version.version_number}
-                      </div>
+                      <div className="font-semibold text-thinkFlow-text">Version {version.version_number}</div>
                       <div className="text-xs text-thinkFlow-textSecondary mt-1">
                         {formatDate(version.created_at)}
-                      </div>
-                      <div className="text-xs text-thinkFlow-textSecondary mt-1">
-                        {version.flow_data?.nodes?.length || 0} nodes • 
-                        {version.flow_data?.edges?.length || 0} connections
                       </div>
                     </div>
                     <Button
                       variant="custom"
                       size="small"
                       onClick={() => handleRevertToVersion(version.version_number)}
-                      className="ml-2 glass-morphism"
                       disabled={loading}
+                      className="ml-2 glass-morphism"
                     >
                       {loading ? 'Reverting...' : 'Revert'}
                     </Button>
@@ -587,4 +551,4 @@ export const TopBar = () => {
       </Modal>
     </>
   );
-}
+};

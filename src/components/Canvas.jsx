@@ -12,9 +12,6 @@ import 'reactflow/dist/style.css';
 import { useNodesStore } from '../hooks/useNodesStore';
 import CustomNodeWrapper from './CustomNodeWrapper';
 import { fetchBackgroundImage } from '../utils/unsplash';
-import Chatbot from './Chatbot';
-import AIProviderSelector from './AIProviderSelector';
-import IdeaBuffet from './IdeaBuffet';
 
 // Custom edge component with neon glow
 const NeonEdge = ({ id, source, target, sourceHandle, targetHandle, style, data }) => {
@@ -408,9 +405,7 @@ export default function Canvas() {
       style={{ backgroundColor: '#101828' }}
     >
       {/* Floating Action Buttons */}
-      <Chatbot />
-      <AIProviderSelector />
-      <IdeaBuffet />
+
 
       {/* Custom background image */}
       {backgroundImage && (
