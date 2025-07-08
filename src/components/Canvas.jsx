@@ -397,6 +397,9 @@ export default function Canvas() {
 
   // console.log('🎨 Rendering nodes:', nodes);
 
+  // Add state for interactivity
+  const [isInteractive, setIsInteractive] = useState(true);
+
   return (
     <div
       className="flex-1 h-full relative bg-thinkFlow-bg"
@@ -445,15 +448,17 @@ export default function Canvas() {
         onNodeDragStop={onNodeDragStop}
         fitView
         nodeTypes={nodeTypes}
-        // connectionLineType="bezier"
         className="relative z-20"
         ref={reactFlowRef}
         minZoom={0.1}
         maxZoom={4}
-        // defaultZoom={1}
         zoomOnScroll={true}
         zoomOnPinch={true}
         zoomOnDoubleClick={true}
+        nodesDraggable={isInteractive}
+        nodesConnectable={isInteractive}
+        elementsSelectable={isInteractive}
+        onPaneClick={() => setIsInteractive(true)}
       >
         {nodes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-500 z-30">
@@ -461,7 +466,7 @@ export default function Canvas() {
           </div>
         )}
         <Background />
-        <Controls />
+        <Controls onInteractiveChange={setIsInteractive} />
       </ReactFlow>
 
       {/* Photo credit */}

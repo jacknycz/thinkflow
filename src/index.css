@@ -209,8 +209,69 @@ body.theme-white {
   }
 
   .pres-button:hover {
+    background: linear-gradient(135deg, 
+      rgba(109, 93, 251, 0.25) 0%, 
+      rgba(166, 108, 250, 0.25) 100%);
+    border: 1px solid rgba(109, 93, 251, 0.4);
     box-shadow: 
-      0 6px 20px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      0 8px 25px rgba(109, 93, 251, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
   }
+}
+
+/* React Flow Controls Glass Styling */
+.react-flow__controls {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 50px !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls button {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: white !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.react-flow__controls button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.05) !important;
+}
+
+.react-flow__controls button:active {
+  transform: scale(0.95) !important;
+}
+
+.react-flow__controls button svg {
+  fill: white !important;
+  stroke: white !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.react-flow__controls button path {
+  fill: white !important;
+  stroke: white !important;
+}
+
+/* Ensure the controls are positioned correctly */
+.react-flow__controls-bottomright {
+  bottom: 20px !important;
+  right: 20px !important;
 }
