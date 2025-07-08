@@ -132,7 +132,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
                 <Button
                   variant="custom"
                   size="small"
-                  className="glass-morphism"
                   disabled={currentPage <= 1}
                   onClick={() => {
                     setCurrentPage(prev => prev - 1);
@@ -147,7 +146,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
                 <Button
                   variant="custom"
                   size="small"
-                  className="glass-morphism"
                   disabled={currentPage >= pdfPreview.totalPages}
                   onClick={() => {
                     setCurrentPage(prev => prev + 1);
@@ -284,7 +282,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
             <Button
               variant="custom"
               size="small"
-              className="glass-morphism"
               onClick={() => window.open(file?.publicUrl, '_blank')}
             >
               <OpenInNewIcon fontSize="small" />
@@ -292,7 +289,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
             <Button
               variant="custom"
               size="small"
-              className="glass-morphism"
               onClick={() => {
                 const link = document.createElement('a');
                 link.href = file?.publicUrl;
@@ -328,7 +324,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
               <Button
                 variant="custom"
                 size="small"
-                className="glass-morphism"
                 onClick={loadPreview}
               >
                 Retry
@@ -348,7 +343,6 @@ export default function FilePreview({ file, isOpen, onClose, nodeColor }) {
                   <Button
                     variant="custom"
                     size="small"
-                    className="glass-morphism"
                     onClick={() => window.open(file?.publicUrl, '_blank')}
                   >
                     Open File

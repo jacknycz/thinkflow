@@ -67,7 +67,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 p-4 h-full overflow-y-auto shadow-inner border-l text-thinkFlow-textSecondary glass-morphism-dark">
+          <aside className="w-80 p-4 h-full overflow-y-auto shadow-inner border-l text-thinkFlow-textSecondary">
       <h2 className="text-lg font-bold mb-2 text-thinkFlow-text">
         Make some ideas
       </h2>
@@ -118,7 +118,7 @@ export default function Sidebar() {
         {chatLog.map((msg, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded shadow-sm text-sm glass-morphism ${
+            className={`p-2 rounded shadow-sm text-sm ${
               msg.role === 'user' 
                 ? 'border border-thinkFlow-accent/30' 
                 : 'border border-thinkFlow-border/30'
@@ -143,12 +143,12 @@ export default function Sidebar() {
           placeholder={
             rootNode?.data?.label ? `Ex: ${rootNode.data.label.slice(0, 30)}...` : 'New idea topic...'
           }
-          // className="glass-morphism"
+  
         />
         <Button 
           variant="custom"
           size="default"
-          className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
+                      className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90"
         >
           Ask
         </Button>
@@ -161,7 +161,7 @@ export default function Sidebar() {
         {ideaBuffet.map((idea, idx) => (
           <li
             key={`buffet-${idx}`}
-            className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm glass-morphism hover:glass-morphism-accent"
+            className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm"
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/json', JSON.stringify(idea));
@@ -179,7 +179,7 @@ export default function Sidebar() {
                   variant="custom"
                   size="small"
                   title={`Add to ${node.data?.label ?? 'Unnamed node'}`}
-                  className="text-xs glass-morphism"
+                  className="text-xs"
                 >
                   {truncate(node.data?.label)}
                 </Button>

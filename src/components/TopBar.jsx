@@ -265,13 +265,11 @@ export const TopBar = () => {
     <>
       <header className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center gap-4 z-50">
         <div className="flex items-center">
-          <div className="px-4 py-2 rounded-full bg-white/25 border border-white/30 backdrop-blur-md shadow-lg">
-            <img 
-              src="/nodal-logo.svg" 
-              alt="Nodal" 
-              className="h-8 w-auto"
-            />
-          </div>
+          <img 
+            src="/nodal-logo-dark.svg" 
+            alt="Nodal" 
+            className="h-8 w-auto"
+          />
         </div>
         
         {!rootNode ? (
@@ -292,7 +290,7 @@ export const TopBar = () => {
               variant="custom"
               size="small"
               onClick={handleUpdateClick}
-              className="glass-morphism"
+              className="bg-gray-800/90"
             >
               Update topic
             </Button>
@@ -319,7 +317,7 @@ export const TopBar = () => {
                 src={user?.user_metadata?.avatar_url}
                 alt={user?.user_metadata?.full_name || 'User'}
                 size="default"
-                className="border border-thinkFlow-border cursor-pointer glass-morphism"
+                className="border border-thinkFlow-border cursor-pointer bg-gray-800/90"
               />
               <div
                 className={`absolute right-0 top-full mt-0 min-w-[200px] rounded-lg bg-gray-800/90 text-gray-100 shadow-xl transition-all z-50 ${
@@ -374,7 +372,7 @@ export const TopBar = () => {
           <Button 
             variant="custom"
             onClick={handleUpdateCancel}
-            className="glass-morphism"
+            className="bg-gray-800/90"
           >
             Cancel
           </Button>
@@ -382,7 +380,7 @@ export const TopBar = () => {
             variant="custom"
             onClick={handleUpdateConfirm}
             disabled={!newTopic.trim()}
-            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
+            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90"
           >
             Update Topic
           </Button>
@@ -421,7 +419,7 @@ export const TopBar = () => {
           <Button
             variant="custom"
             onClick={() => setShowSaveModal(false)}
-            className="glass-morphism"
+            className="bg-gray-800/90"
           >
             Cancel
           </Button>
@@ -429,7 +427,7 @@ export const TopBar = () => {
             variant="custom"
             onClick={handleSaveFlow}
             disabled={loading || !flowName.trim()}
-            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent"
+            className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90"
           >
             {loading ? 'Saving...' : 'Save Flow'}
           </Button>
@@ -454,7 +452,7 @@ export const TopBar = () => {
               {flows.map((flow) => (
                 <div
                   key={flow.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors glass-morphism ${
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors bg-gray-800/90 ${
                     activeFlow?.id === flow.id
                       ? 'border-thinkFlow-accent'
                       : 'border-thinkFlow-border/30'
@@ -476,7 +474,7 @@ export const TopBar = () => {
                       variant="custom"
                       size="small"
                       onClick={() => handleDeleteFlow(flow.id, flow.name)}
-                      className="ml-2 glass-morphism"
+                      className="ml-2 bg-gray-800/90"
                     >
                       Delete
                     </Button>
@@ -490,7 +488,7 @@ export const TopBar = () => {
           <Button
             variant="custom"
             onClick={() => setShowLoadModal(false)}
-            className="glass-morphism"
+            className="bg-gray-800/90"
           >
             Close
           </Button>
@@ -515,7 +513,7 @@ export const TopBar = () => {
               {versions.map((version) => (
                 <div
                   key={version.version_number}
-                  className="p-3 border rounded-lg transition-colors glass-morphism border-thinkFlow-border/30"
+                  className="p-3 border rounded-lg transition-colors bg-gray-800/90 border-thinkFlow-border/30"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -529,7 +527,7 @@ export const TopBar = () => {
                       size="small"
                       onClick={() => handleRevertToVersion(version.version_number)}
                       disabled={loading}
-                      className="ml-2 glass-morphism"
+                      className="ml-2 bg-gray-800/90"
                     >
                       {loading ? 'Reverting...' : 'Revert'}
                     </Button>
@@ -543,7 +541,7 @@ export const TopBar = () => {
           <Button
             variant="custom"
             onClick={() => setShowVersionModal(false)}
-            className="glass-morphism"
+            className="bg-gray-800/90"
           >
             Close
           </Button>

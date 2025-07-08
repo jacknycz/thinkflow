@@ -217,10 +217,10 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           />
         </div>
         <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={() => setAddModalOpen(false)} className="mr-2 glass-morphism">
+                        <Button variant="secondary" onClick={() => setAddModalOpen(false)} className="mr-2">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleConfirmAdd} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent">
+          <Button variant="primary" onClick={handleConfirmAdd} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90">
             Add Idea
           </Button>
         </div>
@@ -289,10 +289,10 @@ export default function NodeToolbarAdd({ nodeId, data, addNode, updateNode, node
           </div>
         </div>
         <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2 glass-morphism">
+          <Button variant="secondary" onClick={() => setGenerateModalOpen(false)} className="mr-2">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleGenerateAIConfirm} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90 glass-morphism-accent">
+          <Button variant="primary" onClick={handleGenerateAIConfirm} className="bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white border-none shadow-md hover:opacity-90">
             Generate
           </Button>
         </div>

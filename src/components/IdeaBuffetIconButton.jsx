@@ -61,7 +61,7 @@ export const IdeaBuffetIconButton = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full right-0 mt-2 w-80 h-96 bg-black/30 rounded-xl p-3 glass-morphism-dark border border-white/10 shadow-2xl"
+            className="absolute top-full right-0 mt-2 w-80 h-96 bg-gray-800/90 rounded-xl p-3 border border-gray-600 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-3">
               <div className="font-bold text-thinkFlow-text text-base">Idea Buffet</div>
@@ -92,7 +92,7 @@ export const IdeaBuffetIconButton = () => {
               <Button 
                 variant="custom"
                 size="default"
-                className="glass-morphism-accent"
+                className="bg-thinkFlow-accent"
                 type="submit"
                 disabled={isGeneratingIdeasBuffet}
               >
@@ -109,7 +109,7 @@ export const IdeaBuffetIconButton = () => {
                 {ideaBuffet.map((idea, idx) => (
                   <li
                     key={`buffet-${idx}`}
-                    className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm glass-morphism hover:glass-morphism-accent"
+                    className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm bg-gray-700/90 hover:bg-thinkFlow-accent"
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('application/json', JSON.stringify(idea));
@@ -127,7 +127,7 @@ export const IdeaBuffetIconButton = () => {
                           variant="custom"
                           size="small"
                           title={`Add to ${node.data?.label ?? 'Unnamed node'}`}
-                          className="text-xs glass-morphism"
+                          className="text-xs bg-gray-700/90"
                         >
                           {truncate(node.data?.label)}
                         </Button>

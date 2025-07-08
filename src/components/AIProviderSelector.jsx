@@ -28,7 +28,7 @@ export default function AIProviderSelector() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="w-64 bg-black/30 rounded-xl p-3 glass-morphism-dark border border-white/10 shadow-2xl"
+            className="w-64 bg-black/30 rounded-xl p-3 border border-white/10 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-3">
               <div className="font-bold text-thinkFlow-text text-base">�� AI Settings</div>
@@ -88,7 +88,7 @@ export default function AIProviderSelector() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setIsExpanded(true)}
-            className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 glass-morphism-accent border border-white/20 flex items-center justify-center"
+            className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 border border-white/20 flex items-center justify-center"
           >
             <PsychologyIcon />
           </motion.button>

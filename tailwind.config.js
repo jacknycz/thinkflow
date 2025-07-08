@@ -11,16 +11,16 @@ module.exports = {
       colors: {
         p: {
           50: '#FFFFFF',
-    100: '#FEDEEF',
-    200: '#FBBCDE',
-    300: '#F79ACE',
-    400: '#F075BE',
-    500: '#E84AAE',
-    600: '#C3398E',
-    700: '#9F296F',
-    800: '#7D1A51',
-    900: '#5C0B35',
-    950: '#3D001C',
+          100: '#FEDEEF',
+          200: '#FBBCDE',
+          300: '#F79ACE',
+          400: '#F075BE',
+          500: '#E84AAE',
+          600: '#C3398E',
+          700: '#9F296F',
+          800: '#7D1A51',
+          900: '#5C0B35',
+          950: '#3D001C',
         },
         // ThinkFlow-inspired theme
         thinkFlow: {

@@ -6,7 +6,7 @@ export const GenerateIdeasButton = ({ onClick, disabled = false, loading = false
     <Button 
       variant="custom"
       size="default"
-      className="glass-morphism-accent"
+      
       onClick={onClick}
       disabled={disabled}
       type="submit"

@@ -69,7 +69,7 @@
 //             animate={{ opacity: 1 }}
 //             exit={{ opacity: 0 }}
 //             transition={{ duration: 0.2 }}
-//             className="w-80 h-96 bg-black/30 rounded-xl p-3 glass-morphism-dark border border-white/10 shadow-2xl"
+//             className="w-80 h-96 bg-black/30 rounded-xl p-3 border border-white/10 shadow-2xl"
 //           >
 //             <div className="flex justify-between items-center mb-3">
 //               <div className="font-bold text-thinkFlow-text text-base">Idea Buffet</div>
@@ -113,7 +113,7 @@
 //                 {ideaBuffet.map((idea, idx) => (
 //                   <li
 //                     key={`buffet-${idx}`}
-//                     className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm glass-morphism hover:glass-morphism-accent"
+//                     className="transition-all cursor-grab duration-300 p-3 rounded-lg hover:shadow-lg text-sm"
 //                     draggable
 //                     onDragStart={(e) => {
 //                       e.dataTransfer.setData('application/json', JSON.stringify(idea));
@@ -145,7 +145,7 @@
 //             exit={{ opacity: 0 }}
 //             transition={{ duration: 0.2 }}
 //             onClick={() => setIsExpanded(true)}
-//             className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 glass-morphism-accent border border-white/20 flex items-center justify-center"
+//             className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 border border-white/20 flex items-center justify-center"
 //           >
 //             <LightbulbIcon />
 //           </motion.button>

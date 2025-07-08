@@ -546,10 +546,10 @@ export default function CustomNode({ id, data, addNode, updateNode = () => { }, 
 
   return (
     <div
-      className={`relative p-5 border rounded-3xl shadow-xl max-w-lg min-w-[340px] transition-all duration-300 glassy-node ${shouldBlur ? 'node-blur' : isFocus ? 'node-focus' : ''}`}
+      className={`relative p-5 rounded-3xl  max-w-lg min-w-[340px] transition-all duration-300 glassy-node ${shouldBlur ? 'node-blur' : isFocus ? 'node-focus' : ''}`}
       style={{
-        background: `radial-gradient(circle, transparent 10%, ${data.nodeColor || '#e5e7eb'}60 100%)`,
-        border: `1px solid ${data.nodeColor || '#e5e7eb'}`,
+        background: `radial-gradient(circle, rgba(255, 255, 255, 0.5) 10%, ${data.nodeColor || '#e5e7eb'}60 100%)`,
+        // border: `1px solid ${data.nodeColor || '#e5e7eb'}`,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowAddMenu(false); }}

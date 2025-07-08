@@ -94,41 +94,7 @@ body.theme-white {
 }
 
 @layer components {
-  /* Ultra-glossy glass morphism base styles */
-  .glass-morphism {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  }
 
-  .glass-morphism-dark {
-    background: rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-morphism-accent {
-    background: linear-gradient(135deg, 
-      rgba(109, 93, 251, 0.15) 0%, 
-      rgba(166, 108, 250, 0.15) 100%);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(109, 93, 251, 0.2);
-    box-shadow: 
-      0 8px 32px rgba(109, 93, 251, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  }
 
   /* Target the modal's outer class (example: .pres-modal) */
   .pres-modal {
@@ -223,14 +189,9 @@ body.theme-white {
 /* React Flow Controls Glass Styling */
 .react-flow__controls {
   background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 50px !important;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
   padding: 0 !important;
   overflow: hidden !important;
 }

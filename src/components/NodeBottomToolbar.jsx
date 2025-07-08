@@ -35,11 +35,11 @@ export default function NodeBottomToolbar({
   };
 
   return (
-    <div className="flex w-full h-12 rounded-full shadow-lg glass-morphism">
+            <div className="flex w-full h-12 rounded-full shadow-lg">
       {/* Add Button with submenu */}
       <div className="relative flex-1 h-full flex items-center justify-center" onMouseEnter={onAddMenuEnter} onMouseLeave={onAddMenuLeave}>
         <button
-          className="w-full h-full flex items-center justify-center transition-colors duration-200 bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 hover:opacity-90 rounded-l-full text-white glass-morphism-accent"
+          className="w-full h-full flex items-center justify-center transition-colors duration-200 bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 hover:opacity-90 rounded-l-full text-white"
           onClick={onAddClick}
           tabIndex={0}
           type="button"

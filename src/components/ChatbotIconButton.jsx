@@ -101,7 +101,7 @@ export const ChatbotIconButton = () => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute top-full right-0 mt-2 w-80 h-96 bg-black/30 rounded-xl p-3 glass-morphism-dark border border-white/10 shadow-2xl"
+            className="absolute top-full right-0 mt-2 w-80 h-96 bg-gray-800/90 rounded-xl p-3 border border-gray-600 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-thinkFlow-text text-base">💬 Chatbot</div>
@@ -116,7 +116,7 @@ export const ChatbotIconButton = () => {
             <div className="flex-1 overflow-y-auto space-y-2 mb-2 pr-1 h-64">
               {messages.map((message, idx) => (
                 <div key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm shadow glass-morphism ${message.role === 'user' ? 'bg-thinkFlow-accent text-white' : 'bg-white/10 text-thinkFlow-text'}`}>
+                  <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm shadow bg-gray-700/90 ${message.role === 'user' ? 'bg-thinkFlow-accent text-white' : 'bg-white/10 text-thinkFlow-text'}`}>
                     <div>{message.content}</div>
                     <div className="text-xs text-gray-400 mt-1 text-right">{formatTimestamp(message.timestamp)}</div>
                   </div>
@@ -138,7 +138,7 @@ export const ChatbotIconButton = () => {
               <Button
                 variant="custom"
                 size="default"
-                className="glass-morphism-accent"
+                className="bg-thinkFlow-accent"
                 type="submit"
                 disabled={isLoading || !inputMessage.trim()}
               >
@@ -154,10 +154,10 @@ export const ChatbotIconButton = () => {
           console.log('🔍 Chatbot button clicked, current state:', isExpanded);
           setIsExpanded(!isExpanded);
         }}
-        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+        className={`w-12 h-12 rounded-full hover:bg-sky-500 flex items-center justify-center transition-all duration-200 ${
           isExpanded 
-            ? 'bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white shadow-lg' 
-            : 'bg-white/10 border border-white/20 backdrop-blur-sm hover:bg-white/20'
+            ? 'bg-sky-500 text-white shadow-lg' 
+            : 'bg-slate-900/90 backdrop-blur-sm'
         }`}
         title="Chatbot"
       >

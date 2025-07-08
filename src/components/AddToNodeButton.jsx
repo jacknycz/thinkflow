@@ -13,7 +13,7 @@ export const AddToNodeButton = ({ nodeId, nodeLabel, onClick, disabled = false }
       variant="custom"
       size="small"
       title={`Add to ${nodeLabel ?? 'Unnamed node'}`}
-      className="text-xs glass-morphism"
+              className="text-xs"
       disabled={disabled}
     >
       {truncate(nodeLabel)}

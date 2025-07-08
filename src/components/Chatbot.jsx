@@ -104,7 +104,7 @@ export default function Chatbot() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-80 h-96 bg-black/30 rounded-xl p-3 glass-morphism-dark border border-white/10 shadow-2xl"
+            className="w-80 h-96 bg-black/30 rounded-xl p-3 border border-white/10 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-thinkFlow-text text-base">💬 Chatbot</div>
@@ -119,7 +119,7 @@ export default function Chatbot() {
             <div className="flex-1 overflow-y-auto space-y-2 mb-2 pr-1 h-64">
               {messages.map((message, idx) => (
                 <div key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm shadow glass-morphism ${message.role === 'user' ? 'bg-thinkFlow-accent text-white' : 'bg-white/10 text-thinkFlow-text'}`}>
+                  <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm shadow ${message.role === 'user' ? 'bg-thinkFlow-accent text-white' : 'bg-white/10 text-thinkFlow-text'}`}>
                     <div>{message.content}</div>
                     <div className="text-xs text-gray-400 mt-1 text-right">{formatTimestamp(message.timestamp)}</div>
                   </div>
@@ -141,7 +141,7 @@ export default function Chatbot() {
               <Button
                 variant="custom"
                 size="default"
-                className="glass-morphism-accent"
+
                 type="submit"
                 disabled={isLoading || !inputMessage.trim()}
               >
@@ -156,7 +156,7 @@ export default function Chatbot() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setIsExpanded(true)}
-            className="w-12 h-12 rounded-full bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 glass-morphism-accent border border-white/20 flex items-center justify-center"
+            className="w-12 h-12 rounded-full bg-gradient-to-r from-thinkFlow-accent to-thinkFlow-accent2 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 border border-white/20 flex items-center justify-center"
           >
             <ChatIcon />
           </motion.button>
